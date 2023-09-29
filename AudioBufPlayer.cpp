@@ -5,10 +5,14 @@
 #include "framework.h"
 #include "AudioBufPlayer.h"
 #include "Defs.h"
+#include <Functiondiscoverykeys_devpkey.h>
+
 #include <iostream>
 #include <thread>
 #include <chrono>
 using namespace std::chrono;
+
+#include <locale>
 
 // https://learn.microsoft.com/en-us/windows/win32/coreaudio/rendering-a-stream
 // https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nf-audioclient-iaudioclient-isformatsupported
@@ -25,6 +29,11 @@ CAudioBufPlayer::CAudioBufPlayer()
     , mIsPlaying(false)
     , mContinueReading(true)
 {
+    // 默认情况下，std::cout使用多字节字符集（如ASCII）进行输出，而不是宽字符集（如Unicode）
+    // 设置std::cout的本地化为宽字符输出
+    std::locale::global(std::locale(""));
+    // 使用std::wcout输出宽字符
+    std::wcout.imbue(std::locale());
 }
 
 CAudioBufPlayer::~CAudioBufPlayer()
@@ -42,6 +51,9 @@ bool CAudioBufPlayer::Init(IAudioSource* pSource)
     // 获取音频输出设备
     hr = mpEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &mpDevice);
     EXIT_ON_ERROR(hr)
+#ifdef DEBUG
+    CheckDeviceProperties();
+#endif // DEBUG
 
     // 打开音频输出设备
     hr = mpDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&mpAudioClient);
@@ -172,6 +184,7 @@ void CAudioBufPlayer::DoPlaybackLoop()
 
     hr = mpAudioClient->Start();  // Start playing
     EXIT_ON_ERROR(hr);
+    std::cout << ">>> Playback loop started" << std::endl;
 
     mIsPlaying = true;
 
@@ -206,6 +219,7 @@ void CAudioBufPlayer::DoPlaybackLoop()
 
 Exit:
     mIsPlaying = false;
+    std::cout << ">>> Playback loop exited" << std::endl;
 }
 
 bool CAudioBufPlayer::GetWaveFormat(WAVEFORMATEX& format)
@@ -220,4 +234,49 @@ bool CAudioBufPlayer::GetWaveFormat(WAVEFORMATEX& format)
 void CAudioBufPlayer::SetAudioSource(IAudioSource* pSource)
 {
     mDataSource = pSource;
+}
+
+void CAudioBufPlayer::CheckDeviceProperties()
+{
+    HRESULT hr = S_OK;
+    IPropertyStore* pProps = NULL;
+    LPWSTR pwszID = NULL;
+
+    // Get the endpoint ID string.
+    hr = mpDevice->GetId(&pwszID);
+    EXIT_ON_ERROR(hr);
+    std::wcout << L"Device ID: " << pwszID << std::endl;
+
+    hr = mpDevice->OpenPropertyStore(STGM_READ, &pProps);
+    EXIT_ON_ERROR(hr);
+
+    PROPVARIANT varName;
+    PropVariantInit(&varName);
+
+    // Get the endpoint's friendly-name property.
+    hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
+    // GetValue succeeds and returns S_OK if PKEY_Device_FriendlyName is not found.
+    // In this case vartName.vt is set to VT_EMPTY.      
+    if (varName.vt != VT_EMPTY)
+    {
+        std::wcout << L"Device FriendlyName: " << varName.pwszVal << std::endl;
+    }
+    PropVariantClear(&varName);
+
+    PropVariantInit(&varName);
+    hr = pProps->GetValue(PKEY_Device_DeviceDesc, &varName);
+    if (varName.vt != VT_EMPTY)
+    {
+        std::wcout << L"Device description: " << varName.pwszVal << std::endl;
+    }
+    PropVariantClear(&varName);
+
+Exit:
+    if (pwszID != NULL) {
+        CoTaskMemFree(pwszID);
+        pwszID = NULL;
+    }
+    SAFE_RELEASE(pProps);
+    
+    return;
 }

@@ -28,6 +28,8 @@ private:
     bool mIsPlaying;
     bool mContinueReading;
 
+    void CheckDeviceProperties();
+
 public:
     CAudioBufPlayer();
 	~CAudioBufPlayer();
