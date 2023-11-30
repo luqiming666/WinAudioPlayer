@@ -63,6 +63,8 @@ bool CAudioBufPlayer::Init(IAudioSource* pSource)
     hr = mpAudioClient->GetMixFormat(&mpWaveFormat);
     EXIT_ON_ERROR(hr);
 
+    //WAVEFORMATEXTENSIBLE* pWaveFormatEx = (WAVEFORMATEXTENSIBLE*)mpWaveFormat;
+
     /*mpWaveFormat->nSamplesPerSec = 44100;
     mpWaveFormat->wBitsPerSample = 16;
     mpWaveFormat->nBlockAlign = mpWaveFormat->nChannels * mpWaveFormat->wBitsPerSample / 8;
@@ -221,6 +223,10 @@ void CAudioBufPlayer::DoPlaybackLoop()
 
 Exit:
     mIsPlaying = false;
+    if (mpAudioClient) {
+        mpAudioClient->Stop();
+        mpAudioClient->Reset();
+    }
     std::cout << ">>> Playback loop exited" << std::endl;
 }
 

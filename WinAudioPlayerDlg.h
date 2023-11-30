@@ -28,10 +28,14 @@ protected:
 
 	CAudioBufPlayer mAudioPlayer;
 	WAVEFORMATEX* mRequiredFormat;
+	CString mSourceFile;
 
 	// IAudioSource methods
 	void SetFormat(WAVEFORMATEX* pFormat);
 	HRESULT LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags);
+
+	void PrepareForPlayback();
+	bool FillBufferWithFileData(UINT32 frameCount, BYTE* pData);
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -43,6 +47,5 @@ public:
 	afx_msg void OnBnClickedButtonBrowser();
 	afx_msg void OnBnClickedButtonPlay();
 	afx_msg void OnBnClickedButtonStop();
-	CString mSourceFile;
 	afx_msg void OnDestroy();
 };

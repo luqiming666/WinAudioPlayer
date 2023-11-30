@@ -7,8 +7,13 @@
 #include "WinAudioPlayer.h"
 #include "WinAudioPlayerDlg.h"
 #include "afxdialogex.h"
+#include "Defs.h"
+
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <vector>
+#include <cstdint>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -17,7 +22,7 @@
 // 打开一个控制台窗口，方便查看调试信息
 #define DEBUG_WINDOW_IS_OPEN 1
 
-#define _DUMP_PCM_FILE
+//#define _DUMP_PCM_FILE
 
 #define DUMP_FILENAME _T("D:\\audiodump.wav")
 
@@ -201,6 +206,55 @@ void CWinAudioPlayerDlg::OnDestroy()
 }
 
 
+WavHeader header;
+std::vector<int8_t> pcmData;
+
+int parseWaveFile(const wchar_t* srcFile)
+{
+	// Codes from ChatGPT 3.5 *_^
+	// 打开.wav文件
+	std::ifstream file(srcFile, std::ios::binary);
+	if (!file.is_open()) {
+		std::cerr << "Failed to open file." << std::endl;
+		return 1;
+	}
+
+	std::cout << "Parsing the wave file: " << srcFile << std::endl;
+
+	// 获取文件大小
+	file.seekg(0, std::ios::end);
+	int fileSize = (int)file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	// 读取文件头
+	//WavHeader header;
+	file.read(reinterpret_cast<char*>(&header), sizeof(WavHeader));
+
+	// 检查文件头是否有效
+	if (std::string(header.chunkId, 4) != "RIFF" || std::string(header.format, 4) != "WAVE") {
+		std::cerr << "Invalid WAV file format." << std::endl;
+		return 1;
+	}
+
+	// 读取PCM数据
+	// 注意：header.subchunk2Size不可靠！
+	//std::vector<int8_t> pcmData(header.subchunk2Size);
+	int bytesToRead = fileSize - sizeof(WavHeader);
+	pcmData = std::vector<int8_t>(bytesToRead);
+	file.read(reinterpret_cast<char*>(pcmData.data()), bytesToRead);
+
+	// 输出文件信息
+	std::cout << "Channels: " << header.numChannels << std::endl;
+	std::cout << "Sample Rate: " << header.sampleRate << " Hz" << std::endl;
+	std::cout << "Bits per Sample: " << header.bitsPerSample << std::endl;
+	std::cout << "PCM Data Size: " << pcmData.size() << " bytes" << std::endl;
+
+	// 关闭文件
+	file.close();
+
+	return 0;
+}
+
 void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 {
 	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|All Files (*.*)|*.*||"), NULL);
@@ -208,6 +262,9 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 	{
 		mSourceFile = fileDlg.GetPathName();
 		UpdateData(FALSE);
+
+		parseWaveFile(mSourceFile.GetBuffer());
+		mSourceFile.ReleaseBuffer();
 	}
 }
 
@@ -249,6 +306,12 @@ void WriteWaveFileHeader(std::fstream& file, UINT32 sampleRate, UINT16 numChanne
 
 void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 {
+	if (mAudioPlayer.IsPlaying()) {
+		AfxMessageBox(_T("The playback is still in progress..."));
+		return;
+	}
+
+	PrepareForPlayback();
 	mAudioPlayer.Start();
 
 #ifdef _DUMP_PCM_FILE
@@ -276,7 +339,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonStop()
 void CWinAudioPlayerDlg::SetFormat(WAVEFORMATEX* pFormat)
 {
 	mRequiredFormat = pFormat;
-	std::cout << "Audio format >> Channels: " << pFormat->nChannels << " >> Sample Rate: " << pFormat->nSamplesPerSec << " >> Bits Per Sample: " << pFormat->wBitsPerSample << std::endl;
+	std::cout << "Required audio format >> Channels: " << pFormat->nChannels << " >> Sample Rate: " << pFormat->nSamplesPerSec << " >> Bits Per Sample: " << pFormat->wBitsPerSample << std::endl;
 }
 
 void synthesizeBuffer(int frame_count, int sample_rate, int bits_per_sample, int channel_count, BYTE* buffer)
@@ -354,11 +417,78 @@ void synthesizeBufferFloat(int frame_count, int sample_rate, int bits_per_sample
 	}
 }
 
+static int64_t bytesUsed = 0; // bytes which have been played
+
+bool CWinAudioPlayerDlg::FillBufferWithFileData(UINT32 frameCount, BYTE* pData)
+{
+	int8_t* pSourceData = reinterpret_cast<int8_t*>(pcmData.data()) + bytesUsed;
+	int64_t bytesLeft = pcmData.size() - bytesUsed;
+	int64_t bytesToRead = frameCount * header.numChannels * header.bitsPerSample / 8;
+
+	int framesToRead = frameCount;
+	if (bytesToRead <= bytesLeft) {
+		bytesUsed += bytesToRead;
+	}
+	else {
+		framesToRead = bytesLeft / (header.numChannels * header.bitsPerSample / 8);
+		bytesUsed = pcmData.size();
+	}
+	
+	float* out = (float*)pData;
+
+	for (int frame = 0; frame < framesToRead; ++frame) {
+		float val = 0.0;
+		int sourceOffset = frame * header.numChannels;
+		for (int chan = 0; chan < mRequiredFormat->nChannels; ++chan) {
+			if (header.bitsPerSample == 8) {     // PCM数据标准化
+				int8_t* pReadPos = (int8_t*)pSourceData + sourceOffset;
+				if (chan < header.numChannels) { // 如果设备的声道数多于源文件，则填充静音数据
+					val = pReadPos[chan] * 1.0 / 0x7F;
+				}
+			}
+			else if (header.bitsPerSample == 16) {
+				int16_t* pReadPos = (int16_t*)pSourceData + sourceOffset;
+				if (chan < header.numChannels) {
+					val = pReadPos[chan] * 1.0 / 0x7FFF;
+				}
+			}
+			else if (header.bitsPerSample == 32) {
+				int32_t* pReadPos = (int32_t*)pSourceData + sourceOffset;
+				if (chan < header.numChannels) {
+					val = pReadPos[chan] * 1.0 / 0x7FFFFFFF;
+				}
+			}
+			else {
+				std::cout << "Not supported! Bits_per_sample " << header.bitsPerSample << std::endl;
+			}
+
+			out[frame * mRequiredFormat->nChannels + chan] = val;
+		}
+	}
+
+	return framesToRead > 0;
+}
+
+void CWinAudioPlayerDlg::PrepareForPlayback()
+{
+	bytesUsed = 0;
+}
+
 HRESULT CWinAudioPlayerDlg::LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags)
 {
-	synthesizeBufferFloat(frameCount, mRequiredFormat->nSamplesPerSec, mRequiredFormat->wBitsPerSample, mRequiredFormat->nChannels, pData);
 	*flags = 0;
-	//*flags = AUDCLNT_BUFFERFLAGS_SILENT;
+	if (mSourceFile.IsEmpty()) {
+		synthesizeBufferFloat(frameCount, mRequiredFormat->nSamplesPerSec, mRequiredFormat->wBitsPerSample, mRequiredFormat->nChannels, pData);
+	}
+	else {
+		// TODO: 源文件的采样频率与设备混音要求的不一致，需要转换！
+		int bytesToFill = frameCount * mRequiredFormat->nChannels * mRequiredFormat->wBitsPerSample / 8;
+		memset(pData, 0, bytesToFill);
+		if (!FillBufferWithFileData(frameCount, pData))
+		{
+			*flags = AUDCLNT_BUFFERFLAGS_SILENT;
+		}
+	}
 
 #ifdef _DUMP_PCM_FILE
 	int bytes = frameCount * mRequiredFormat->nChannels * mRequiredFormat->wBitsPerSample / 8;
