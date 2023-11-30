@@ -8,6 +8,7 @@
 #include "WinAudioPlayerDlg.h"
 #include "afxdialogex.h"
 #include "Defs.h"
+#include "UMiscUtils.h"
 
 #include <iostream>
 #include <fstream>
@@ -219,7 +220,7 @@ int parseWaveFile(const wchar_t* srcFile)
 		return 1;
 	}
 
-	std::cout << "Parsing the wave file: " << srcFile << std::endl;
+	std::cout << "Parsing the wave file: " << UMiscUtils::WtoA(srcFile) << std::endl;
 
 	// 获取文件大小
 	file.seekg(0, std::ios::end);
@@ -336,10 +337,11 @@ void CWinAudioPlayerDlg::OnBnClickedButtonStop()
 }
 
 
-void CWinAudioPlayerDlg::SetFormat(WAVEFORMATEX* pFormat)
+HRESULT CWinAudioPlayerDlg::SetFormat(WAVEFORMATEX* pFormat)
 {
 	mRequiredFormat = pFormat;
 	std::cout << "Required audio format >> Channels: " << pFormat->nChannels << " >> Sample Rate: " << pFormat->nSamplesPerSec << " >> Bits Per Sample: " << pFormat->wBitsPerSample << std::endl;
+	return S_OK;
 }
 
 void synthesizeBuffer(int frame_count, int sample_rate, int bits_per_sample, int channel_count, BYTE* buffer)

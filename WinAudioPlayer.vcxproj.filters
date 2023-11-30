@@ -39,6 +39,9 @@
     <ClInclude Include="Defs.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="UMiscUtils.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WinAudioPlayer.cpp">
@@ -51,6 +54,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="AudioBufPlayer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="UMiscUtils.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

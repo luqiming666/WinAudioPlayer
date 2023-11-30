@@ -10,7 +10,7 @@
 
 class IAudioSource {
 public:
-    virtual void SetFormat(WAVEFORMATEX* pFormat) = 0;
+    virtual HRESULT SetFormat(WAVEFORMATEX* pFormat) = 0;
     virtual HRESULT LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags) = 0;
 };
 

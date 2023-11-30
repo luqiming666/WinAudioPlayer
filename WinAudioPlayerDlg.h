@@ -31,7 +31,7 @@ protected:
 	CString mSourceFile;
 
 	// IAudioSource methods
-	void SetFormat(WAVEFORMATEX* pFormat);
+	HRESULT SetFormat(WAVEFORMATEX* pFormat);
 	HRESULT LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags);
 
 	void PrepareForPlayback();
