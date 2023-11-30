@@ -4,6 +4,7 @@
 #ifndef __H_AudioBufPlayer__
 #define __H_AudioBufPlayer__
 
+#include <audiopolicy.h>
 #include <Mmdeviceapi.h>
 #include <Audioclient.h>
 
@@ -36,6 +37,7 @@ public:
 
     bool Init(IAudioSource* pSource);
     void Uninit();
+    void SetDataSource(IAudioSource* pSource) { mDataSource = pSource; }
     void DoPlaybackLoop();
 
     bool Start();

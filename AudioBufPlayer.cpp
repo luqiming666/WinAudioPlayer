@@ -46,22 +46,22 @@ bool CAudioBufPlayer::Init(IAudioSource* pSource)
     HRESULT hr;
     // 获取音频设备枚举器
     hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&mpEnumerator);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
 
     // 获取音频输出设备
     hr = mpEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &mpDevice);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
 #ifdef DEBUG
     CheckDeviceProperties();
 #endif // DEBUG
 
     // 打开音频输出设备
     hr = mpDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&mpAudioClient);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
 
     // 创建音频客户端
     hr = mpAudioClient->GetMixFormat(&mpWaveFormat);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
 
     /*mpWaveFormat->nSamplesPerSec = 44100;
     mpWaveFormat->wBitsPerSample = 16;
@@ -86,15 +86,15 @@ bool CAudioBufPlayer::Init(IAudioSource* pSource)
     }
 
     hr = mpAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, mRequestedDuration, 0, mpWaveFormat, nullptr);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
 
     // Get the actual size of the allocated buffer.
     hr = mpAudioClient->GetBufferSize(&mBufFrameCount);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
 
     // 获取音频渲染客户端
     hr = mpAudioClient->GetService(__uuidof(IAudioRenderClient), (void**)&mpRenderClient);
-    EXIT_ON_ERROR(hr)
+    EXIT_ON_ERROR(hr);
     return true;
 
 Exit:
@@ -165,6 +165,7 @@ void CAudioBufPlayer::DoPlaybackLoop()
     // See how much buffer space is available.
     hr = mpAudioClient->GetCurrentPadding(&numFramesPadding);
     EXIT_ON_ERROR(hr);
+
     numFramesAvailable = mBufFrameCount - numFramesPadding;
     if (numFramesAvailable > 0) {
         // Grab the entire buffer for the initial fill operation.
@@ -174,6 +175,7 @@ void CAudioBufPlayer::DoPlaybackLoop()
         // Load the initial data into the shared buffer.
         hr = mDataSource->LoadData(numFramesAvailable, pData, &flags);
         EXIT_ON_ERROR(hr);
+
         hr = mpRenderClient->ReleaseBuffer(numFramesAvailable, flags);
         EXIT_ON_ERROR(hr);
     }

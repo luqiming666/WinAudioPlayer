@@ -276,15 +276,15 @@ void CWinAudioPlayerDlg::OnBnClickedButtonStop()
 void CWinAudioPlayerDlg::SetFormat(WAVEFORMATEX* pFormat)
 {
 	mRequiredFormat = pFormat;
-	std::cout << "Audio format >> Channels: " << pFormat->nChannels << " Sample-rate: " << pFormat->nSamplesPerSec << " Bit-depth: " << pFormat->wBitsPerSample << std::endl;
+	std::cout << "Audio format >> Channels: " << pFormat->nChannels << " >> Sample Rate: " << pFormat->nSamplesPerSec << " >> Bits Per Sample: " << pFormat->wBitsPerSample << std::endl;
 }
 
-// Global counter of generated samples
-int64_t N = 0;
 void synthesizeBuffer(int frame_count, int sample_rate, int bits_per_sample, int channel_count, BYTE* buffer)
 {
-	double A440 = 440.0; // 440 Hz
-	double PI = 3.14151926535;
+	static const double sineFrequency = 440.0; // 440 Hz
+	static const double cycleLength = sample_rate / sineFrequency;
+	static const double PI = 3.14151926535;
+	static int64_t N = 0; // Global counter of generated samples
 
 	int16_t* pBuf16 = (int16_t*)buffer;
 	int32_t* pBuf32 = (int32_t*)buffer;
@@ -292,7 +292,7 @@ void synthesizeBuffer(int frame_count, int sample_rate, int bits_per_sample, int
 	for (int a = 0; a < frame_count; a++)
 	{
 		// Calculate the next value of the sine wave sample.
-		double value = 0.1 * sin(N * A440 * 2 * PI / (double)sample_rate);
+		double value = sin(N * 2 * PI / cycleLength);
 
 		if (bits_per_sample == 16) {
 			// Convert to 16-bit value
@@ -329,9 +329,34 @@ void synthesizeBuffer(int frame_count, int sample_rate, int bits_per_sample, int
 	}
 }
 
+// The audio engine represents sample values internally as floating-point numbers.
+// to facilitate digital audio processing, the audio engine might use a mix format that represents samples as floating-point values.
+// https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nf-audioclient-iaudioclient-getmixformat
+void synthesizeBufferFloat(int frame_count, int sample_rate, int bits_per_sample, int channel_count, BYTE* buffer)
+{
+	static const double PI = 3.14151926535;
+	static const float sineFrequency_ = 440.0; // Hz
+	static const double cycleLength_ = sample_rate / sineFrequency_;
+	static double pos_ = 0.0;
+
+	float* out = (float*)buffer;
+
+	for (int frame = 0; frame < frame_count; ++frame) {
+		float val = sin(2 * PI * pos_ / cycleLength_);
+
+		for (int chan = 0; chan < channel_count; ++chan) {
+			out[frame * channel_count + chan] = val;
+		}
+
+		pos_ += 1.0;
+		//if (pos_ > cycleLength_)
+		//	pos_ -= cycleLength_;
+	}
+}
+
 HRESULT CWinAudioPlayerDlg::LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags)
 {
-	synthesizeBuffer(frameCount, mRequiredFormat->nSamplesPerSec, mRequiredFormat->wBitsPerSample, mRequiredFormat->nChannels, pData);
+	synthesizeBufferFloat(frameCount, mRequiredFormat->nSamplesPerSec, mRequiredFormat->wBitsPerSample, mRequiredFormat->nChannels, pData);
 	*flags = 0;
 	//*flags = AUDCLNT_BUFFERFLAGS_SILENT;
 
