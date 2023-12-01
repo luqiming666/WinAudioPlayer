@@ -266,6 +266,11 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 
 		parseWaveFile(mSourceFile.GetBuffer());
 		mSourceFile.ReleaseBuffer();
+
+		// 如果源文件的采样频率与设备要求不一致，则进行重采样
+		if (header.sampleRate != mRequiredFormat->nSamplesPerSec) {
+			pcmData = UMiscUtils::Resample(pcmData, header.bitsPerSample, header.sampleRate, mRequiredFormat->nSamplesPerSec);
+		}
 	}
 }
 
@@ -483,9 +488,9 @@ HRESULT CWinAudioPlayerDlg::LoadData(UINT32 frameCount, BYTE* pData, DWORD* flag
 		synthesizeBufferFloat(frameCount, mRequiredFormat->nSamplesPerSec, mRequiredFormat->wBitsPerSample, mRequiredFormat->nChannels, pData);
 	}
 	else {
-		// TODO: 源文件的采样频率与设备混音要求的不一致，需要转换！
 		int bytesToFill = frameCount * mRequiredFormat->nChannels * mRequiredFormat->wBitsPerSample / 8;
 		memset(pData, 0, bytesToFill);
+
 		if (!FillBufferWithFileData(frameCount, pData))
 		{
 			*flags = AUDCLNT_BUFFERFLAGS_SILENT;
