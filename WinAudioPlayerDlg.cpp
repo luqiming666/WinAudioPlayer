@@ -269,7 +269,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 
 		// 如果源文件的采样频率与设备要求不一致，则进行重采样
 		if (header.sampleRate != mRequiredFormat->nSamplesPerSec) {
-			pcmData = UMiscUtils::Resample(pcmData, header.bitsPerSample, header.sampleRate, mRequiredFormat->nSamplesPerSec);
+			//pcmData = UMiscUtils::Resample(pcmData, header.bitsPerSample, header.sampleRate, mRequiredFormat->nSamplesPerSec);
 		}
 	}
 }
