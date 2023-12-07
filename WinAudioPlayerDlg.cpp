@@ -515,9 +515,13 @@ void CWinAudioPlayerDlg::TryToPlayFromCommandline()
 	if (__argc < 2) return;
 
 	for (int i = 1; i < __argc; i++) {
-		std::string arg = __argv[i];
-		if (arg.find(".wav") != std::string::npos) {
-			mSourceFile = __argv[i];
+#if _UNICODE
+		CString arg = __wargv[i];
+#else
+		CString arg = __argv[i];
+#endif //_UNICODE
+		if (arg.Find(_T(".wav")) != -1) {
+			mSourceFile = arg;
 			UpdateData(FALSE);
 
 			parseWaveFile(mSourceFile.GetBuffer());
