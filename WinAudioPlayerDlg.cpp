@@ -144,6 +144,8 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 	mAudioPlayer.Init(this);
 
+	TryToPlayFromCommandline();
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -504,4 +506,24 @@ HRESULT CWinAudioPlayerDlg::LoadData(UINT32 frameCount, BYTE* pData, DWORD* flag
 #endif
 
 	return S_OK;
+}
+
+// 关联.wav扩展名到本程序：
+// Windows 11: 控制面板 | 应用 | 默认应用，为文件类型或链接类型设置默认值，输入".wav"，在电脑上选择应用 -> 指定到本程序
+void CWinAudioPlayerDlg::TryToPlayFromCommandline()
+{
+	if (__argc < 2) return;
+
+	for (int i = 1; i < __argc; i++) {
+		std::string arg = __argv[i];
+		if (arg.find(".wav") != std::string::npos) {
+			mSourceFile = __argv[i];
+			UpdateData(FALSE);
+
+			parseWaveFile(mSourceFile.GetBuffer());
+			mSourceFile.ReleaseBuffer();
+			OnBnClickedButtonPlay();
+			break;
+		}
+	}
 }

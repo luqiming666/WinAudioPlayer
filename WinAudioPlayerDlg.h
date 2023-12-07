@@ -36,6 +36,7 @@ protected:
 
 	void PrepareForPlayback();
 	bool FillBufferWithFileData(UINT32 frameCount, BYTE* pData);
+	void TryToPlayFromCommandline();
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
