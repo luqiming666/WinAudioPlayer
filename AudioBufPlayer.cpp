@@ -29,11 +29,6 @@ CAudioBufPlayer::CAudioBufPlayer()
     , mIsPlaying(false)
     , mContinueReading(true)
 {
-    // 默认情况下，std::cout使用多字节字符集（如ASCII）进行输出，而不是宽字符集（如Unicode）
-    // 设置std::cout的本地化为宽字符输出
-    std::locale::global(std::locale(""));
-    // 使用std::wcout输出宽字符
-    std::wcout.imbue(std::locale());
 }
 
 CAudioBufPlayer::~CAudioBufPlayer()

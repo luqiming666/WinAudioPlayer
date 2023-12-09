@@ -5,6 +5,7 @@
 namespace UMiscUtils {
 
 	// 将宽字符字符串转换为多字节字符串
+	//	记得释放内存！
 	char* WtoA(const wchar_t* wstr)
 	{
 		int size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
@@ -14,6 +15,7 @@ namespace UMiscUtils {
 	}
 
 	// 将多字节字符串转换为宽字符字符串
+	//	记得释放内存！
 	wchar_t* AtoW(const char* str)
 	{
 		int size = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);

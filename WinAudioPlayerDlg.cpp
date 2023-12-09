@@ -140,6 +140,12 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 	}
 #endif
 
+	// 默认情况下，std::cout使用多字节字符集（如ASCII）进行输出，而不是宽字符集（如Unicode）
+	// 设置std::cout的本地化为宽字符输出
+	std::locale::global(std::locale(""));
+	// 使用std::wcout输出宽字符
+	std::wcout.imbue(std::locale());
+
 	// 初始化COM组件
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 	mAudioPlayer.Init(this);
@@ -222,7 +228,7 @@ int parseWaveFile(const wchar_t* srcFile)
 		return 1;
 	}
 
-	std::cout << "Parsing the wave file: " << UMiscUtils::WtoA(srcFile) << std::endl;
+	std::wcout << L"Parsing the wave file: " << srcFile << std::endl;
 
 	// 获取文件大小
 	file.seekg(0, std::ios::end);
