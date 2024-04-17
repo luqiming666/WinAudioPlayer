@@ -282,7 +282,12 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 	}
 }
 
-
+/*
+* https://learn.microsoft.com/en-us/windows/win32/api/mmreg/ns-mmreg-waveformatex
+* Specifies the number of bits per sample for the format type specified by wFormatTag.
+If wFormatTag = WAVE_FORMAT_PCM, then wBitsPerSample should be set to either 8 or 16.
+If wFormatTag = WAVE_FORMAT_IEEE_FLOAT, wBitsPerSample should be set to 32.
+*/
 void WriteWaveFileHeader(std::fstream& file, UINT32 sampleRate, UINT16 numChannels, UINT16 bitsPerSample, UINT32 pcmDataSize)
 {
 	// WAVE文件头
