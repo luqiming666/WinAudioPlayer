@@ -18,24 +18,25 @@ class CAudioBufPlayer
 {
 private:
     IMMDeviceEnumerator* mpEnumerator;
-    IMMDevice* mpDevice;
-    IAudioClient* mpAudioClient;
-    WAVEFORMATEX* mpWaveFormat;
+    IMMDevice*          mpDevice;
+    IAudioClient*       mpAudioClient;
+    WAVEFORMATEX*       mpWaveFormat;
     IAudioRenderClient* mpRenderClient;
 
-    REFERENCE_TIME mRequestedDuration;
-    UINT32 mBufFrameCount;
-    IAudioSource* mDataSource;
+    REFERENCE_TIME  mRequestedDuration;
+    UINT32          mBufFrameCount;
+    IAudioSource*   mDataSource;
     bool mIsPlaying;
     bool mContinueReading;
 
     void CheckDeviceProperties();
+    HRESULT FindAudioDevice(IMMDeviceEnumerator* pEnumerator, IMMDevice** ppDevice, const wchar_t* deviceName);
 
 public:
     CAudioBufPlayer();
 	~CAudioBufPlayer();
 
-    bool Init(IAudioSource* pSource);
+    bool Init(const wchar_t* deviceName = NULL);
     void Uninit();
     void SetDataSource(IAudioSource* pSource) { mDataSource = pSource; }
     void DoPlaybackLoop();

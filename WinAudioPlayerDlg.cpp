@@ -83,6 +83,7 @@ void CWinAudioPlayerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_EDIT_SOURCE_FILE, mSourceFile);
+	DDX_Control(pDX, IDC_COMBO_SOUND_CARDS, mSoundCardList);
 }
 
 BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
@@ -93,6 +94,7 @@ BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CWinAudioPlayerDlg::OnBnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CWinAudioPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_DESTROY()
+	ON_CBN_SELCHANGE(IDC_COMBO_SOUND_CARDS, &CWinAudioPlayerDlg::OnCbnSelchangeComboSoundCards)
 END_MESSAGE_MAP()
 
 
@@ -148,7 +150,15 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 
 	// 初始化COM组件
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-	mAudioPlayer.Init(this);
+	mAudioPlayer.SetAudioSource(this);
+	mAudioPlayer.Init(); // init with the default device
+
+	// 枚举所有音频播放设备
+	std::list<std::wstring> soundCards = UMiscUtils::GetAllSoundCards();
+	for (std::wstring item : soundCards) {
+		mSoundCardList.AddString(item.c_str());
+	}
+	mSoundCardList.SelectString(-1, UMiscUtils::GetDefaultSoundCard().c_str()); // Select the default device
 
 	TryToPlayFromCommandline();
 
@@ -272,8 +282,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 		mSourceFile = fileDlg.GetPathName();
 		UpdateData(FALSE);
 
-		parseWaveFile(mSourceFile.GetBuffer());
-		mSourceFile.ReleaseBuffer();
+		parseWaveFile((LPCTSTR)mSourceFile);
 
 		// 如果源文件的采样频率与设备要求不一致，则进行重采样
 		if (header.sampleRate != mRequiredFormat->nSamplesPerSec) {
@@ -287,6 +296,8 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 * Specifies the number of bits per sample for the format type specified by wFormatTag.
 If wFormatTag = WAVE_FORMAT_PCM, then wBitsPerSample should be set to either 8 or 16.
 If wFormatTag = WAVE_FORMAT_IEEE_FLOAT, wBitsPerSample should be set to 32.
+
+RIFF file format: https://github.com/audionamix/wave
 */
 void WriteWaveFileHeader(std::fstream& file, UINT32 sampleRate, UINT16 numChannels, UINT16 bitsPerSample, UINT32 pcmDataSize)
 {
@@ -535,10 +546,22 @@ void CWinAudioPlayerDlg::TryToPlayFromCommandline()
 			mSourceFile = arg;
 			UpdateData(FALSE);
 
-			parseWaveFile(mSourceFile.GetBuffer());
-			mSourceFile.ReleaseBuffer();
+			parseWaveFile((LPCTSTR)mSourceFile);
 			OnBnClickedButtonPlay();
 			break;
 		}
+	}
+}
+
+void CWinAudioPlayerDlg::OnCbnSelchangeComboSoundCards()
+{
+	int curIndex = mSoundCardList.GetCurSel();
+	if (curIndex >= 0) {
+		CString strCard;
+		mSoundCardList.GetLBText(curIndex, strCard);
+
+		mAudioPlayer.Stop();
+		mAudioPlayer.Uninit();
+		mAudioPlayer.Init((LPCTSTR)strCard);
 	}
 }

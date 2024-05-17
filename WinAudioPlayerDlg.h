@@ -26,6 +26,8 @@ public:
 protected:
 	HICON m_hIcon;
 
+	CComboBox mSoundCardList;
+
 	CAudioBufPlayer mAudioPlayer;
 	WAVEFORMATEX* mRequiredFormat;
 	CString mSourceFile;
@@ -49,4 +51,6 @@ public:
 	afx_msg void OnBnClickedButtonPlay();
 	afx_msg void OnBnClickedButtonStop();
 	afx_msg void OnDestroy();
+
+	afx_msg void OnCbnSelchangeComboSoundCards();
 };

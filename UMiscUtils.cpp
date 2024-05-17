@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "framework.h"
 #include "UMiscUtils.h"
+#include "Defs.h"
+#include <Mmdeviceapi.h>
+#include <Functiondiscoverykeys_devpkey.h>
 
 namespace UMiscUtils {
 
@@ -80,5 +83,81 @@ namespace UMiscUtils {
 		}
 
 		return resampledData;
+	}
+
+	std::list<std::wstring> GetAllSoundCards()
+	{
+		std::list<std::wstring> allCards;
+
+		IMMDeviceEnumerator* pEnumerator = NULL;
+		IMMDeviceCollection* pDevices = NULL;
+
+		HRESULT hr;
+		hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+		EXIT_ON_ERROR(hr);
+
+		hr = pEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &pDevices);
+		EXIT_ON_ERROR(hr);
+
+		UINT deviceCount = 0;
+		hr = pDevices->GetCount(&deviceCount);
+		if (deviceCount > 0) {
+			for (int i = 0; i < deviceCount; i++) {
+				IMMDevice* pDeviceItem = NULL;
+				IPropertyStore* pProps = NULL;
+				if (SUCCEEDED(pDevices->Item(i, &pDeviceItem))) {
+					hr = pDeviceItem->OpenPropertyStore(STGM_READ, &pProps);
+
+					PROPVARIANT varName;
+					PropVariantInit(&varName);
+					hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);    
+					if (varName.vt != VT_EMPTY)
+					{
+						allCards.push_back(varName.pwszVal);
+					}
+					PropVariantClear(&varName);
+				}
+				SAFE_RELEASE(pProps);
+				SAFE_RELEASE(pDeviceItem);
+			}
+		}
+
+	Exit:
+		SAFE_RELEASE(pDevices);
+		SAFE_RELEASE(pEnumerator);
+		return allCards;
+	}
+
+	std::wstring GetDefaultSoundCard()
+	{
+		IMMDeviceEnumerator* pEnumerator = NULL;
+		IMMDevice* pDevice = NULL;
+		IPropertyStore* pProps = NULL;
+		std::wstring		deviceName;
+
+		HRESULT hr;
+		hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+		EXIT_ON_ERROR(hr);
+
+		hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
+		EXIT_ON_ERROR(hr);
+
+		hr = pDevice->OpenPropertyStore(STGM_READ, &pProps);
+		EXIT_ON_ERROR(hr);
+
+		PROPVARIANT varName;
+		PropVariantInit(&varName);
+		hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
+		if (varName.vt != VT_EMPTY)
+		{
+			deviceName = varName.pwszVal;
+		}
+		PropVariantClear(&varName);
+
+	Exit:
+		SAFE_RELEASE(pProps);
+		SAFE_RELEASE(pDevice);
+		SAFE_RELEASE(pEnumerator);
+		return deviceName;
 	}
 }

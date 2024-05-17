@@ -1,6 +1,8 @@
 #pragma once
 
+#include <string>
 #include <vector>
+#include <list>
 
 namespace UMiscUtils {
 
@@ -8,4 +10,6 @@ namespace UMiscUtils {
 	wchar_t* AtoW(const char* str);
 
 	std::vector<int8_t> Resample(std::vector<int8_t>& pcmData, int srcBitsPerSample, int srcFreq, int dstFreq);
+	std::list<std::wstring> GetAllSoundCards();
+	std::wstring GetDefaultSoundCard();
 }

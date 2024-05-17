@@ -36,7 +36,7 @@ CAudioBufPlayer::~CAudioBufPlayer()
     Uninit();
 }
 
-bool CAudioBufPlayer::Init(IAudioSource* pSource)
+bool CAudioBufPlayer::Init(const wchar_t* deviceName/*=NULL*/)
 {
     HRESULT hr;
     // 获取音频设备枚举器
@@ -44,7 +44,12 @@ bool CAudioBufPlayer::Init(IAudioSource* pSource)
     EXIT_ON_ERROR(hr);
 
     // 获取音频输出设备
-    hr = mpEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &mpDevice);
+    if (deviceName) {
+        hr = FindAudioDevice(mpEnumerator, &mpDevice, deviceName);
+    }
+    else {
+        hr = mpEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &mpDevice);
+    }
     EXIT_ON_ERROR(hr);
 #ifdef DEBUG
     CheckDeviceProperties();
@@ -77,7 +82,6 @@ bool CAudioBufPlayer::Init(IAudioSource* pSource)
     }*/
 
     // Tell the audio source which format to use.
-    mDataSource = pSource;
     if (mDataSource) {
         mDataSource->SetFormat(mpWaveFormat);
     }
@@ -282,4 +286,41 @@ Exit:
     SAFE_RELEASE(pProps);
     
     return;
+}
+
+HRESULT CAudioBufPlayer::FindAudioDevice(IMMDeviceEnumerator* pEnumerator, IMMDevice** ppDevice, const wchar_t* deviceName)
+{
+    IMMDeviceCollection* pDevices = NULL;
+    HRESULT hr = pEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &pDevices);
+
+    UINT deviceCount = 0;
+    bool bFound = false;
+    hr = pDevices->GetCount(&deviceCount);
+    if (deviceCount > 0) {
+        for (int i = 0; i < deviceCount && !bFound; i++) {
+            IMMDevice* pDeviceItem = NULL;
+            IPropertyStore* pProps = NULL;
+            if (SUCCEEDED(pDevices->Item(i, &pDeviceItem))) {
+                hr = pDeviceItem->OpenPropertyStore(STGM_READ, &pProps);
+
+                PROPVARIANT varName;
+                PropVariantInit(&varName);
+                hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
+                if (varName.vt != VT_EMPTY)
+                {
+                    std::wstring strItemName = varName.pwszVal;
+                    if (strItemName.compare(deviceName) == 0) {
+                        pDeviceItem->AddRef();
+                        *ppDevice = pDeviceItem;
+                        bFound = true;
+                    }
+                }
+                PropVariantClear(&varName);
+            }
+            SAFE_RELEASE(pProps);
+            SAFE_RELEASE(pDeviceItem);
+        }
+    }
+
+    return bFound ? S_OK : E_FAIL;
 }
