@@ -33,13 +33,13 @@
     <ClInclude Include="pch.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="AudioBufPlayer.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Defs.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="UMiscUtils.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CAudioBufPlayer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -53,10 +53,10 @@
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="AudioBufPlayer.cpp">
+    <ClCompile Include="UMiscUtils.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="UMiscUtils.cpp">
+    <ClCompile Include="CAudioBufPlayer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

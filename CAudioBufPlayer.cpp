@@ -1,9 +1,9 @@
-﻿// AudioPeeperLib.cpp : 定义静态库的函数。
+﻿// CAudioBufPlayer.cpp
 //
 
 #include "pch.h"
 #include "framework.h"
-#include "AudioBufPlayer.h"
+#include "CAudioBufPlayer.h"
 #include "Defs.h"
 #include <Functiondiscoverykeys_devpkey.h>
 

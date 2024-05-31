@@ -1,8 +1,8 @@
 ﻿//
-// AudioBufPlayer.h
+// CAudioBufPlayer.h
 //
-#ifndef __H_AudioBufPlayer__
-#define __H_AudioBufPlayer__
+#ifndef __H_CAudioBufPlayer__
+#define __H_CAudioBufPlayer__
 
 #include <audiopolicy.h>
 #include <Mmdeviceapi.h>
@@ -38,7 +38,6 @@ public:
 
     bool Init(const wchar_t* deviceName = NULL);
     void Uninit();
-    void SetDataSource(IAudioSource* pSource) { mDataSource = pSource; }
     void DoPlaybackLoop();
 
     bool Start();
@@ -49,4 +48,4 @@ public:
     bool GetWaveFormat(WAVEFORMATEX& format);
 };
 
-#endif // __H_AudioBufPlayer__
+#endif // __H_CAudioBufPlayer__

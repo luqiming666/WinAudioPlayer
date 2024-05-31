@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "AudioBufPlayer.h"
+#include "CAudioBufPlayer.h"
 
 // CWinAudioPlayerDlg 对话框
 class CWinAudioPlayerDlg : public CDialogEx, public IAudioSource
