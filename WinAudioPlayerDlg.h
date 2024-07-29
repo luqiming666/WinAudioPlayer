@@ -40,6 +40,10 @@ protected:
 	bool FillBufferWithFileData(UINT32 frameCount, BYTE* pData);
 	void TryToPlayFromCommandline();
 
+	// Test MiniAudio APIs
+	int PlayFileWithMiniAudioLib(const TCHAR* filepath);
+	void StopMiniAudio();
+
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -53,4 +57,5 @@ public:
 	afx_msg void OnDestroy();
 
 	afx_msg void OnCbnSelchangeComboSoundCards();
+	afx_msg void OnBnClickedButtonPlayWithMiniaudio();
 };

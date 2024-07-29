@@ -16,6 +16,12 @@
 #include <vector>
 #include <cstdint>
 
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+
+ma_decoder maDecoder;
+ma_device maDevice;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -69,8 +75,6 @@ END_MESSAGE_MAP()
 
 // CWinAudioPlayerDlg 对话框
 
-
-
 CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_WINAUDIOPLAYER_DIALOG, pParent)
 	, mSourceFile(_T(""))
@@ -95,6 +99,7 @@ BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CWinAudioPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_DESTROY()
 	ON_CBN_SELCHANGE(IDC_COMBO_SOUND_CARDS, &CWinAudioPlayerDlg::OnCbnSelchangeComboSoundCards)
+	ON_BN_CLICKED(IDC_BUTTON_PLAY_WITH_MINIAUDIO, &CWinAudioPlayerDlg::OnBnClickedButtonPlayWithMiniaudio)
 END_MESSAGE_MAP()
 
 
@@ -219,6 +224,9 @@ void CWinAudioPlayerDlg::OnDestroy()
 	CDialogEx::OnDestroy();
 
 	mAudioPlayer.Stop(true);
+
+	// Release MiniAudio resources
+	StopMiniAudio();
 
 	// 反初始化COM组件
 	CoUninitialize();
@@ -363,6 +371,8 @@ void CWinAudioPlayerDlg::OnBnClickedButtonStop()
 	WriteWaveFileHeader(dumpFile, mRequiredFormat->nSamplesPerSec, mRequiredFormat->nChannels, mRequiredFormat->wBitsPerSample, dumpBytes);
 	dumpFile.close();
 #endif
+
+	StopMiniAudio();
 }
 
 
@@ -563,5 +573,79 @@ void CWinAudioPlayerDlg::OnCbnSelchangeComboSoundCards()
 		mAudioPlayer.Stop();
 		mAudioPlayer.Uninit();
 		mAudioPlayer.Init((LPCTSTR)strCard);
+	}
+}
+
+// A handy library to play audio files https://github.com/mackron/miniaudio
+// 支持的音频格式：WAV、MP3、FLAC
+//	NOTE: ma_engine_play_sound 不支持宽字符文件路径！
+void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
+{
+	// In playback mode copy data to pOutput. 
+	// In capture mode read data from pInput. 
+	// In full-duplex mode, both pOutput and pInput will be valid and you can move data from pInput into pOutput. 
+	// Never process more than frameCount frames.
+	ma_decoder* pDecoder = (ma_decoder*)pDevice->pUserData;
+	if (pDecoder == NULL) {
+		return;
+	}
+
+	ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
+
+	(void)pInput;
+}
+
+void CWinAudioPlayerDlg::OnBnClickedButtonPlayWithMiniaudio()
+{
+	PlayFileWithMiniAudioLib(mSourceFile);
+}
+
+int CWinAudioPlayerDlg::PlayFileWithMiniAudioLib(const TCHAR* filepath)
+{
+	StopMiniAudio();
+
+	ma_result result;
+
+	result = ma_decoder_init_file_w(filepath, NULL, &maDecoder);
+	if (result != MA_SUCCESS) {
+		std::cout << "Failed to open source file.\n" << std::endl;
+		return -1;
+	}
+
+	ma_device_config deviceConfig;
+	deviceConfig = ma_device_config_init(ma_device_type_playback);
+	deviceConfig.playback.format = maDecoder.outputFormat;
+	deviceConfig.playback.channels = maDecoder.outputChannels;
+	deviceConfig.sampleRate = maDecoder.outputSampleRate;
+	deviceConfig.dataCallback = data_callback;
+	deviceConfig.pUserData = &maDecoder;
+
+	if (ma_device_init(NULL, &deviceConfig, &maDevice) != MA_SUCCESS) {
+		std::cout << "Failed to open playback device.\n" << std::endl;
+		ma_decoder_uninit(&maDecoder);
+		return -2;
+	}
+
+	//ma_event_init(&g_stopEvent);
+
+	if (ma_device_start(&maDevice) != MA_SUCCESS) {
+		std::cout << "Failed to start playback device.\n" << std::endl;
+		ma_device_uninit(&maDevice);
+		ma_decoder_uninit(&maDecoder);
+		return -3;
+	}
+
+	//std::cout << "Waiting for playback to complete...\n" << std::endl;
+	//ma_event_wait(&g_stopEvent);
+
+	return 0;
+}
+
+void CWinAudioPlayerDlg::StopMiniAudio()
+{
+	if (maDevice.pUserData) { // is playing?
+		ma_device_stop(&maDevice);
+		ma_device_uninit(&maDevice);
+		ma_decoder_uninit(&maDecoder);
 	}
 }

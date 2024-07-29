@@ -12,6 +12,7 @@
 #define IDC_BUTTON_PLAY                 1002
 #define IDC_BUTTON_STOP                 1003
 #define IDC_COMBO_SOUND_CARDS           1004
+#define IDC_BUTTON_PLAY_WITH_MINIAUDIO  1005
 
 // Next default values for new objects
 // 
