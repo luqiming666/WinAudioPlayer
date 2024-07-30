@@ -41,8 +41,8 @@ protected:
 	void TryToPlayFromCommandline();
 
 	// Test MiniAudio APIs
-	int PlayFileWithMiniAudioLib(const TCHAR* filepath);
-	void StopMiniAudio();
+	int MA_PlayFile(const TCHAR* filepath);
+	void MA_Stop();
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();

@@ -226,7 +226,7 @@ void CWinAudioPlayerDlg::OnDestroy()
 	mAudioPlayer.Stop(true);
 
 	// Release MiniAudio resources
-	StopMiniAudio();
+	MA_Stop();
 
 	// 反初始化COM组件
 	CoUninitialize();
@@ -372,7 +372,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonStop()
 	dumpFile.close();
 #endif
 
-	StopMiniAudio();
+	MA_Stop();
 }
 
 
@@ -597,12 +597,12 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 
 void CWinAudioPlayerDlg::OnBnClickedButtonPlayWithMiniaudio()
 {
-	PlayFileWithMiniAudioLib(mSourceFile);
+	MA_PlayFile(mSourceFile);
 }
 
-int CWinAudioPlayerDlg::PlayFileWithMiniAudioLib(const TCHAR* filepath)
+int CWinAudioPlayerDlg::MA_PlayFile(const TCHAR* filepath)
 {
-	StopMiniAudio();
+	MA_Stop();
 
 	ma_result result;
 
@@ -645,9 +645,9 @@ int CWinAudioPlayerDlg::PlayFileWithMiniAudioLib(const TCHAR* filepath)
 	return 0;
 }
 
-void CWinAudioPlayerDlg::StopMiniAudio()
+void CWinAudioPlayerDlg::MA_Stop()
 {
-	if (maDevice.pUserData) { // is playing?
+	if (maDevice.state.value == ma_device_state_started) { // is playing?
 		ma_device_stop(&maDevice);
 		ma_device_uninit(&maDevice);
 		ma_decoder_uninit(&maDecoder);
