@@ -614,6 +614,9 @@ int CWinAudioPlayerDlg::PlayFileWithMiniAudioLib(const TCHAR* filepath)
 
 	ma_device_config deviceConfig;
 	deviceConfig = ma_device_config_init(ma_device_type_playback);
+	// [Reference] engine_advanced.c
+	// How to enumerate all playback devices, and give users a chance to select one. 
+	//deviceConfig.playback.pDeviceID = ;
 	deviceConfig.playback.format = maDecoder.outputFormat;
 	deviceConfig.playback.channels = maDecoder.outputChannels;
 	deviceConfig.sampleRate = maDecoder.outputSampleRate;
@@ -626,6 +629,7 @@ int CWinAudioPlayerDlg::PlayFileWithMiniAudioLib(const TCHAR* filepath)
 		return -2;
 	}
 
+	// [Reference] simple_mixing.c
 	//ma_event_init(&g_stopEvent);
 
 	if (ma_device_start(&maDevice) != MA_SUCCESS) {
