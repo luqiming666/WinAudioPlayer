@@ -186,6 +186,9 @@
     <ClInclude Include="CAudioBufPlayer.h" />
     <ClInclude Include="Defs.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="miniaudio.h" />
+    <ClInclude Include="minimp3.h" />
+    <ClInclude Include="minimp3_ex.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />

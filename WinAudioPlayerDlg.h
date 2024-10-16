@@ -27,6 +27,7 @@ protected:
 	HICON m_hIcon;
 
 	CComboBox mSoundCardList;
+	BOOL mIsSynth;
 
 	CAudioBufPlayer mAudioPlayer;
 	WAVEFORMATEX* mRequiredFormat;
@@ -39,6 +40,7 @@ protected:
 	void PrepareForPlayback();
 	bool FillBufferWithFileData(UINT32 frameCount, BYTE* pData);
 	void TryToPlayFromCommandline();
+	void DecodeMp3ToPcmBuffer();
 
 	// Test MiniAudio APIs
 	int MA_PlayFile(const TCHAR* filepath);

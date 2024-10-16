@@ -22,6 +22,12 @@
 ma_decoder maDecoder;
 ma_device maDevice;
 
+
+//#define MINIMP3_FLOAT_OUTPUT
+#define MINIMP3_IMPLEMENTATION
+#include "minimp3_ex.h"
+
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -79,6 +85,7 @@ CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_WINAUDIOPLAYER_DIALOG, pParent)
 	, mSourceFile(_T(""))
 	, mRequiredFormat(NULL)
+	, mIsSynth(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -88,6 +95,7 @@ void CWinAudioPlayerDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_EDIT_SOURCE_FILE, mSourceFile);
 	DDX_Control(pDX, IDC_COMBO_SOUND_CARDS, mSoundCardList);
+	DDX_Check(pDX, IDC_CHECK_SYNTH, mIsSynth);
 }
 
 BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
@@ -282,6 +290,15 @@ int parseWaveFile(const wchar_t* srcFile)
 	return 0;
 }
 
+bool isMP3File(const CString& fileName) {
+	int dotPos = fileName.ReverseFind('.');
+	if (dotPos != -1) {
+		CString extension = fileName.Mid(dotPos + 1);
+		return extension.CompareNoCase(_T("mp3")) == 0;
+	}
+	return false;
+}
+
 void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 {
 	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|All Files (*.*)|*.*||"), NULL);
@@ -290,9 +307,17 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 		mSourceFile = fileDlg.GetPathName();
 		UpdateData(FALSE);
 
-		parseWaveFile((LPCTSTR)mSourceFile);
+		// 如果源文件是MP3，则先进行解码
+		if (isMP3File(mSourceFile)) {
+			DecodeMp3ToPcmBuffer();
+		}
+		else {
+			parseWaveFile((LPCTSTR)mSourceFile);
+		}		
 
+		// TODO:
 		// 如果源文件的采样频率与设备要求不一致，则进行重采样
+		// 否则，播放节奏不对！！！
 		if (header.sampleRate != mRequiredFormat->nSamplesPerSec) {
 			//pcmData = UMiscUtils::Resample(pcmData, header.bitsPerSample, header.sampleRate, mRequiredFormat->nSamplesPerSec);
 		}
@@ -348,6 +373,8 @@ void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 		AfxMessageBox(_T("The playback is still in progress..."));
 		return;
 	}
+
+	UpdateData(TRUE);
 
 	PrepareForPlayback();
 	mAudioPlayer.Start();
@@ -518,7 +545,7 @@ void CWinAudioPlayerDlg::PrepareForPlayback()
 HRESULT CWinAudioPlayerDlg::LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags)
 {
 	*flags = 0;
-	if (mSourceFile.IsEmpty()) {
+	if (mSourceFile.IsEmpty() || mIsSynth) {
 		synthesizeBufferFloat(frameCount, mRequiredFormat->nSamplesPerSec, mRequiredFormat->wBitsPerSample, mRequiredFormat->nChannels, pData);
 	}
 	else {
@@ -652,4 +679,79 @@ void CWinAudioPlayerDlg::MA_Stop()
 		ma_device_uninit(&maDevice);
 		ma_decoder_uninit(&maDecoder);
 	}
+}
+
+typedef struct
+{
+	mp3dec_t* mp3d;
+	mp3dec_file_info_t* info;
+	size_t allocated;
+} frames_iterate_data;
+
+static int frames_iterate_cb(void* user_data, const uint8_t* frame, int frame_size, int free_format_bytes, size_t buf_size, uint64_t offset, mp3dec_frame_info_t* info)
+{
+	(void)buf_size;
+	(void)offset;
+	(void)free_format_bytes;
+
+	frames_iterate_data* d = (frames_iterate_data*)user_data;
+	d->info->channels = info->channels;
+	d->info->hz = info->hz;
+	d->info->layer = info->layer;
+	/*printf("%d %d %d\n", frame_size, (int)offset, info->channels);*/
+	if ((d->allocated - d->info->samples * sizeof(mp3d_sample_t)) < MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(mp3d_sample_t))
+	{
+		if (!d->allocated)
+			d->allocated = 1024 * 1024;
+		else
+			d->allocated *= 2;
+		mp3d_sample_t* alloc_buf = (mp3d_sample_t*)realloc(d->info->buffer, d->allocated);
+		if (!alloc_buf)
+			return MP3D_E_MEMORY;
+		d->info->buffer = alloc_buf;
+	}
+	int samples = mp3dec_decode_frame(d->mp3d, frame, frame_size, d->info->buffer + d->info->samples, info);
+	if (samples)
+	{
+		d->info->samples += samples * info->channels;
+	}
+	return 0;
+}
+
+void CWinAudioPlayerDlg::DecodeMp3ToPcmBuffer()
+{
+	if (mSourceFile.IsEmpty()) return;
+
+	// 将MP3文件读进内存
+/*	std::ifstream file((LPCTSTR)mSourceFile, std::ios::binary);
+	if (file.is_open()) {
+		file.seekg(0, std::ios::end);
+		int fileSize = (int)file.tellg();
+		file.seekg(0, std::ios::beg);
+		mp3Data.resize(static_cast<size_t>(fileSize));
+		file.read(reinterpret_cast<char*>(mp3Data.data()), fileSize);
+		file.close();
+	}*/
+
+	// 解码
+	mp3dec_file_info_t info;
+	memset(&info, 0, sizeof(info));
+	mp3dec_t mp3d;
+	mp3dec_init(&mp3d);
+
+	frames_iterate_data d = { &mp3d, &info, 0 };
+	int ret = mp3dec_iterate_w((LPCTSTR)mSourceFile, frames_iterate_cb, &d);
+
+	// 保存解码出来的PCM数据
+	header.numChannels = info.channels;
+	header.sampleRate = info.hz;
+	header.bitsPerSample = sizeof(mp3d_sample_t) * 8;
+	std::cout << "Source audio format: " << header.numChannels << " channels " << header.sampleRate << " Hz " << header.bitsPerSample << " bits" << std::endl;
+
+	int totalBytes = info.samples * sizeof(mp3d_sample_t);
+	pcmData.resize(static_cast<size_t>(totalBytes));
+	memcpy(pcmData.data(), info.buffer, totalBytes); // TODO: 优化上述解码回调函数，以省去一次内存拷贝
+
+	if (info.buffer)
+		free(info.buffer);
 }
