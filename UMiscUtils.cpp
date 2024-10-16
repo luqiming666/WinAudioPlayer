@@ -85,6 +85,63 @@ namespace UMiscUtils {
 		return resampledData;
 	}
 
+	// https://github.com/cpuimage/resampler
+	uint64_t Resample_f32(const float* input, float* output, int inSampleRate, int outSampleRate, uint64_t inputSize,
+		uint32_t channels
+	) {
+		if (input == NULL)
+			return 0;
+		uint64_t outputSize = (uint64_t)(inputSize * (double)outSampleRate / (double)inSampleRate);
+		outputSize -= outputSize % channels;
+		if (output == NULL)
+			return outputSize;
+		double stepDist = ((double)inSampleRate / (double)outSampleRate);
+		const uint64_t fixedFraction = (1LL << 32);
+		const double normFixed = (1.0 / (1LL << 32));
+		uint64_t step = ((uint64_t)(stepDist * fixedFraction + 0.5));
+		uint64_t curOffset = 0;
+		for (uint32_t i = 0; i < outputSize; i++) {
+			for (uint32_t c = 0; c < channels; c++) {
+				*output++ = (float)(input[c] + (input[c + channels] - input[c]) * (
+					(double)(curOffset >> 32) + ((curOffset & (fixedFraction - 1)) * normFixed)
+					)
+					);
+			}
+			curOffset += step;
+			input += (curOffset >> 32) * channels;
+			curOffset &= (fixedFraction - 1);
+		}
+		return outputSize;
+	}
+
+	uint64_t Resample_s16(const int16_t* input, int16_t* output, int inSampleRate, int outSampleRate, uint64_t inputSize,
+		uint32_t channels
+	) {
+		if (input == NULL)
+			return 0;
+		uint64_t outputSize = (uint64_t)(inputSize * (double)outSampleRate / (double)inSampleRate);
+		outputSize -= outputSize % channels;
+		if (output == NULL)
+			return outputSize;
+		double stepDist = ((double)inSampleRate / (double)outSampleRate);
+		const uint64_t fixedFraction = (1LL << 32);
+		const double normFixed = (1.0 / (1LL << 32));
+		uint64_t step = ((uint64_t)(stepDist * fixedFraction + 0.5));
+		uint64_t curOffset = 0;
+		for (uint32_t i = 0; i < outputSize; i++) {
+			for (uint32_t c = 0; c < channels; c++) {
+				*output++ = (int16_t)(input[c] + (input[c + channels] - input[c]) * (
+					(double)(curOffset >> 32) + ((curOffset & (fixedFraction - 1)) * normFixed)
+					)
+					);
+			}
+			curOffset += step;
+			input += (curOffset >> 32) * channels;
+			curOffset &= (fixedFraction - 1);
+		}
+		return outputSize;
+	}
+
 	std::list<std::wstring> GetAllSoundCards()
 	{
 		std::list<std::wstring> allCards;

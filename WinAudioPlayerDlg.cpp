@@ -315,11 +315,29 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 			parseWaveFile((LPCTSTR)mSourceFile);
 		}		
 
-		// TODO:
 		// 如果源文件的采样频率与设备要求不一致，则进行重采样
 		// 否则，播放节奏不对！！！
 		if (header.sampleRate != mRequiredFormat->nSamplesPerSec) {
+			// Not good!
 			//pcmData = UMiscUtils::Resample(pcmData, header.bitsPerSample, header.sampleRate, mRequiredFormat->nSamplesPerSec);
+
+			uint64_t inFrames = pcmData.size() / header.bitsPerSample * 8 / header.numChannels;
+			std::vector<int8_t> outPcmBuf;
+			uint64_t outBytes = (uint64_t)(pcmData.size() * (double)mRequiredFormat->nSamplesPerSec / (double)header.sampleRate);
+			outBytes -= outBytes % header.numChannels;
+			outPcmBuf.resize(outBytes);
+
+			if (header.bitsPerSample == 32) {
+				UMiscUtils::Resample_f32((float*)pcmData.data(), (float*)outPcmBuf.data(), header.sampleRate, mRequiredFormat->nSamplesPerSec, inFrames, header.numChannels);
+				pcmData = outPcmBuf;
+			}
+			else if (header.bitsPerSample == 16) {
+				UMiscUtils::Resample_s16((int16_t*)pcmData.data(), (int16_t*)outPcmBuf.data(), header.sampleRate, mRequiredFormat->nSamplesPerSec, inFrames, header.numChannels);
+				pcmData = outPcmBuf;
+			}
+			else {
+				// TODO
+			}
 		}
 	}
 }
