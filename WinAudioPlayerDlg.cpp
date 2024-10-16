@@ -284,7 +284,7 @@ int parseWaveFile(const wchar_t* srcFile)
 
 void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 {
-	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|All Files (*.*)|*.*||"), NULL);
+	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|All Files (*.*)|*.*||"), NULL);
 	if (fileDlg.DoModal() == IDOK)
 	{
 		mSourceFile = fileDlg.GetPathName();
