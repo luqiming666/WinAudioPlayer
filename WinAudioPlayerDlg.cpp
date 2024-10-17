@@ -329,10 +329,9 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 				mCacheFile.Empty();
 			}
 
-			std::string cacheFilename = UMiscUtils::generateRandomFileName();
-			cacheFilename += ".wav";
+			std::string cacheFilename = UMiscUtils::generateRandomFileName(".wav");
 			wchar_t* pFilename = UMiscUtils::AtoW(cacheFilename.c_str());
-			mCacheFile = UMiscUtils::GetProgramDataPath(_T("FFmpeg"), pFilename);
+			mCacheFile = UMiscUtils::GetProgramDataPath(_T("MyFFmpeg"), pFilename); // 生成一个临时文件
 			delete[] pFilename;
 
 			CString strCmd;

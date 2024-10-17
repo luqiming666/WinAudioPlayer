@@ -65,23 +65,23 @@ namespace UMiscUtils {
 		struct tm timeinfo;
 		localtime_s(&timeinfo, &rawtime);
 		char buffer[20];
-		sprintf_s(buffer, sizeof(buffer), "%04d%02d%02d%02d%02d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min);
+		sprintf_s(buffer, sizeof(buffer), "%04d%02d%02d%02d%02d%02d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 		return std::string(buffer);
 	}
 
-	std::string generateRandomFileName() 
+	std::string generateRandomFileName(const char* extension) 
 	{
 		// 初始化随机数生成器
 		std::srand(static_cast<unsigned int>(std::time(nullptr)));
 		std::stringstream ss;
 		// 生成随机字符串部分
-		for (int i = 0; i < 8; ++i) {
+		for (int i = 0; i < 3; ++i) {
 			char randomChar = static_cast<char>('a' + std::rand() % 26);
 			ss << randomChar;
 		}
 		// 添加时间戳部分
 		std::string currentTime = formatTime();
-		ss << currentTime;
+		ss << currentTime << extension;
 		return ss.str();
 	}
 
