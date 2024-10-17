@@ -245,6 +245,11 @@ void CWinAudioPlayerDlg::OnDestroy()
 
 	// 反初始化COM组件
 	CoUninitialize();
+
+	if (!mCacheFile.IsEmpty()) {
+		DeleteFile(mCacheFile);
+		mCacheFile.Empty();
+	}
 }
 
 
