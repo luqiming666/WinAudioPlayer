@@ -323,6 +323,11 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 
 		// Use FFmpeg for audio format conversion
 		if (mbUseFFmpeg) {
+			if (!mCacheFile.IsEmpty()) {
+				DeleteFile(mCacheFile);
+				mCacheFile.Empty();
+			}
+
 			std::string cacheFilename = UMiscUtils::generateRandomFileName();
 			cacheFilename += ".wav";
 			wchar_t* pFilename = UMiscUtils::AtoW(cacheFilename.c_str());

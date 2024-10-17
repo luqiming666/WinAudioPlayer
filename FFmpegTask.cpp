@@ -6,6 +6,7 @@
 FFmpegTask::FFmpegTask()
 	: m_bThreadRunning(false)
     , m_StatusObserver(NULL)
+    , m_TaskMode(FFMPEG)
 {
 }
 
@@ -31,7 +32,7 @@ bool FFmpegTask::LocateTools(CString& toolFolder)
 std::string FFmpegTask::Probe(CString& srcFile)
 {
     CString strFullCmd;
-    strFullCmd.Format(_T("%s -v quiet -print_format json -show_format -show_streams %s"), m_FFprobeFile, srcFile);
+    strFullCmd.Format(_T("%s -v quiet -print_format json -show_format -show_streams %s"), (LPCTSTR)m_FFprobeFile, (LPCTSTR)srcFile);
 
     std::string result = "";
     UMiscUtils::RunExternalApp(strFullCmd.GetBuffer(), &result, false);
@@ -83,8 +84,7 @@ void FFmpegTask::DoRealTask()
             strToolPath = m_FFplayFile;
         }
 
-        UMiscUtils::RunExternalApp(strToolPath.GetBuffer(), m_CmdParams.GetBuffer(), true);
-        strToolPath.ReleaseBuffer();
+        UMiscUtils::RunExternalApp((LPCTSTR)strToolPath, m_CmdParams.GetBuffer(), true);
         m_CmdParams.ReleaseBuffer();
 
         //std::this_thread::sleep_for(std::chrono::seconds(1));
