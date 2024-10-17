@@ -330,7 +330,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 			delete[] pFilename;
 
 			CString strCmd;
-			strCmd.Format(_T(" -i %s -vn -ar %d -y %s"), mSourceFile, mRequiredFormat->nSamplesPerSec, mCacheFile); // 注意：-i之前须有一个空格
+			strCmd.Format(_T(" -i %s -vn -ar %d -y %s"), (LPCTSTR)mSourceFile, mRequiredFormat->nSamplesPerSec, (LPCTSTR)mCacheFile); // 注意：-i之前须有一个空格
 			mMpegHub.Run(strCmd);
 			return;
 		}
