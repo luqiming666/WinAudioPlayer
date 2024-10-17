@@ -86,6 +86,8 @@ CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	, mSourceFile(_T(""))
 	, mRequiredFormat(NULL)
 	, mIsSynth(FALSE)
+	, mbUseFFmpeg(FALSE)
+	, mCacheFile(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -96,6 +98,7 @@ void CWinAudioPlayerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_SOURCE_FILE, mSourceFile);
 	DDX_Control(pDX, IDC_COMBO_SOUND_CARDS, mSoundCardList);
 	DDX_Check(pDX, IDC_CHECK_SYNTH, mIsSynth);
+	DDX_Check(pDX, IDC_CHECK_USE_FFMPEG, mbUseFFmpeg);
 }
 
 BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
@@ -174,6 +177,10 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 	mSoundCardList.SelectString(-1, UMiscUtils::GetDefaultSoundCard().c_str()); // Select the default device
 
 	TryToPlayFromCommandline();
+
+	// Set up FFmpeg
+	mMpegHub.SetTaskObserver(this);
+	mMpegHub.LocateTools(UMiscUtils::GetRuntimeFilePath());
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -301,19 +308,36 @@ bool isMP3File(const CString& fileName) {
 
 void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 {
+	UpdateData(TRUE);
+
 	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|All Files (*.*)|*.*||"), NULL);
 	if (fileDlg.DoModal() == IDOK)
 	{
 		mSourceFile = fileDlg.GetPathName();
 		UpdateData(FALSE);
 
-		// 如果源文件是MP3，则先进行解码
-		if (isMP3File(mSourceFile)) {
-			DecodeMp3ToPcmBuffer();
+		// Use FFmpeg for audio format conversion
+		if (mbUseFFmpeg) {
+			std::string cacheFilename = UMiscUtils::generateRandomFileName();
+			cacheFilename += ".wav";
+			wchar_t* pFilename = UMiscUtils::AtoW(cacheFilename.c_str());
+			mCacheFile = UMiscUtils::GetProgramDataPath(_T("FFmpeg"), pFilename);
+			delete[] pFilename;
+
+			CString strCmd;
+			strCmd.Format(_T(" -i %s -vn -ar %d -y %s"), mSourceFile, mRequiredFormat->nSamplesPerSec, mCacheFile); // 注意：-i之前须有一个空格
+			mMpegHub.Run(strCmd);
+			return;
 		}
 		else {
-			parseWaveFile((LPCTSTR)mSourceFile);
-		}		
+			// 如果源文件是MP3，则先进行解码
+			if (isMP3File(mSourceFile)) {
+				DecodeMp3ToPcmBuffer();
+			}
+			else {
+				parseWaveFile((LPCTSTR)mSourceFile);
+			}
+		}				
 
 		// 如果源文件的采样频率与设备要求不一致，则进行重采样
 		// 否则，播放节奏不对！！！
@@ -339,6 +363,14 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 				// TODO
 			}
 		}
+	}
+}
+
+void CWinAudioPlayerDlg::OnTaskCompleted()
+{
+	std::cout << "FFmpeg task done!" << std::endl;
+	if (!mCacheFile.IsEmpty()) {
+		parseWaveFile((LPCTSTR)mCacheFile);
 	}
 }
 

@@ -5,9 +5,10 @@
 #pragma once
 
 #include "CAudioBufPlayer.h"
+#include "FFmpegTask.h"
 
 // CWinAudioPlayerDlg 对话框
-class CWinAudioPlayerDlg : public CDialogEx, public IAudioSource
+class CWinAudioPlayerDlg : public CDialogEx, public IAudioSource,public ITaskObserver
 {
 // 构造
 public:
@@ -29,9 +30,16 @@ protected:
 	CComboBox mSoundCardList;
 	BOOL mIsSynth;
 
+	BOOL mbUseFFmpeg;
+	FFmpegTask mMpegHub;
+	CString mCacheFile;
+
 	CAudioBufPlayer mAudioPlayer;
 	WAVEFORMATEX* mRequiredFormat;
 	CString mSourceFile;
+
+	// FFmpeg - ITaskObserver
+	virtual void OnTaskCompleted();
 
 	// IAudioSource methods
 	HRESULT SetFormat(WAVEFORMATEX* pFormat);

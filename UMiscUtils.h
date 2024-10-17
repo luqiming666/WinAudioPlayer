@@ -6,6 +6,10 @@
 
 namespace UMiscUtils {
 
+	CString GetRuntimeFilePath(TCHAR* filename = NULL, TCHAR* subFolder = NULL);
+	CString GetProgramDataPath(TCHAR* subFolder, TCHAR* filename);
+	std::string generateRandomFileName();
+
 	char* WtoA(const wchar_t* wstr);
 	wchar_t* AtoW(const char* str);
 
@@ -15,4 +19,7 @@ namespace UMiscUtils {
 
 	std::list<std::wstring> GetAllSoundCards();
 	std::wstring GetDefaultSoundCard();
+
+	bool RunExternalApp(TCHAR* appPath, TCHAR* appParams, bool bSync = false);
+	bool RunExternalApp(TCHAR* fullCmd, std::string* outInfo, bool bSync = false);
 }

@@ -51,6 +51,9 @@
     <ClInclude Include="minimp3_ex.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="FFmpegTask.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WinAudioPlayer.cpp">
@@ -66,6 +69,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="CAudioBufPlayer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="FFmpegTask.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

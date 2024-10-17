@@ -14,7 +14,8 @@
 #define IDC_COMBO_SOUND_CARDS           1004
 #define IDC_BUTTON_PLAY_WITH_MINIAUDIO  1005
 #define IDC_CHECK_SYNTH                 1006
-#define IDC_BUTTON_TEST_MP3_DECODE      1007
+#define IDC_CHECK_SYNTH2                1007
+#define IDC_CHECK_USE_FFMPEG            1007
 
 // Next default values for new objects
 // 
