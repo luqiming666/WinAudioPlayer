@@ -87,6 +87,7 @@ CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	, mRequiredFormat(NULL)
 	, mIsSynth(FALSE)
 	, mbUseFFmpeg(FALSE)
+	, mbConverting(false)
 	, mCacheFile(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -336,6 +337,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 
 			CString strCmd;
 			strCmd.Format(_T(" -i %s -vn -ar %d -y %s"), (LPCTSTR)mSourceFile, mRequiredFormat->nSamplesPerSec, (LPCTSTR)mCacheFile); // 注意：-i之前须有一个空格
+			mbConverting = true;
 			mMpegHub.Run(strCmd);
 			return;
 		}
@@ -382,6 +384,7 @@ void CWinAudioPlayerDlg::OnTaskCompleted()
 	if (!mCacheFile.IsEmpty()) {
 		parseWaveFile((LPCTSTR)mCacheFile);
 	}
+	mbConverting = false;
 }
 
 /*
@@ -433,8 +436,9 @@ void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 		AfxMessageBox(_T("The playback is still in progress..."));
 		return;
 	}
-
+	
 	UpdateData(TRUE);
+	if (mbUseFFmpeg && mbConverting) return;
 
 	PrepareForPlayback();
 	mAudioPlayer.Start();
