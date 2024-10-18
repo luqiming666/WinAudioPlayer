@@ -27,6 +27,7 @@ private:
     UINT32          mBufFrameCount;
     IAudioSource*   mDataSource;
     bool mIsPlaying;
+    bool mIsPaused;
     bool mContinueReading;
 
     void CheckDeviceProperties();
@@ -42,6 +43,8 @@ public:
 
     bool Start();
     void Stop(bool bWaitToFinish = false);
+    void Pause() { mIsPaused = true; }
+    void Resume() { mIsPaused = false; }
     bool IsPlaying() { return mIsPlaying; }
 
     void SetAudioSource(IAudioSource* pSource);

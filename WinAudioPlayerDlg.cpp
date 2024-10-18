@@ -111,6 +111,7 @@ BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_CBN_SELCHANGE(IDC_COMBO_SOUND_CARDS, &CWinAudioPlayerDlg::OnCbnSelchangeComboSoundCards)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY_WITH_MINIAUDIO, &CWinAudioPlayerDlg::OnBnClickedButtonPlayWithMiniaudio)
+	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CWinAudioPlayerDlg::OnBnClickedButtonPause)
 END_MESSAGE_MAP()
 
 
@@ -430,7 +431,8 @@ void WriteWaveFileHeader(std::fstream& file, UINT32 sampleRate, UINT16 numChanne
 void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 {
 	if (mAudioPlayer.IsPlaying()) {
-		AfxMessageBox(_T("The playback is still in progress..."));
+		//AfxMessageBox(_T("The playback is still in progress..."));
+		mAudioPlayer.Resume();
 		return;
 	}
 	
@@ -446,6 +448,10 @@ void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 #endif
 }
 
+void CWinAudioPlayerDlg::OnBnClickedButtonPause()
+{
+	mAudioPlayer.Pause();
+}
 
 void CWinAudioPlayerDlg::OnBnClickedButtonStop()
 {

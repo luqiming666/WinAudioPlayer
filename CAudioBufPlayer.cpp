@@ -27,6 +27,7 @@ CAudioBufPlayer::CAudioBufPlayer()
     , mRequestedDuration(REFTIMES_PER_SEC)
     , mDataSource(nullptr)
     , mIsPlaying(false)
+    , mIsPaused(false)
     , mContinueReading(true)
 {
 }
@@ -195,6 +196,12 @@ void CAudioBufPlayer::DoPlaybackLoop()
     // Each loop fills about half of the shared buffer.
     while (mContinueReading && flags != AUDCLNT_BUFFERFLAGS_SILENT)
     {
+        if (mIsPaused) {
+            Sleep(10);
+            std::cout << "playback loop - paused for 10ms..." << std::endl;
+            continue;
+        }
+
         // Sleep for half the buffer duration.
         Sleep(halfDuration);
         std::cout << "playback loop - sleep " << halfDuration << std::endl;

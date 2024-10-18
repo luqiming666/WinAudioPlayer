@@ -63,9 +63,9 @@ protected:
 public:
 	afx_msg void OnBnClickedButtonBrowser();
 	afx_msg void OnBnClickedButtonPlay();
+	afx_msg void OnBnClickedButtonPause();
 	afx_msg void OnBnClickedButtonStop();
 	afx_msg void OnDestroy();
-
 	afx_msg void OnCbnSelchangeComboSoundCards();
 	afx_msg void OnBnClickedButtonPlayWithMiniaudio();
 };
