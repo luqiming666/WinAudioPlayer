@@ -87,7 +87,6 @@ CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	, mRequiredFormat(NULL)
 	, mIsSynth(FALSE)
 	, mbUseFFmpeg(FALSE)
-	, mbConverting(false)
 	, mCacheFile(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -324,20 +323,15 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 
 		// Use FFmpeg for audio format conversion
 		if (mbUseFFmpeg) {
-			if (!mCacheFile.IsEmpty()) {
-				DeleteFile(mCacheFile);
-				mCacheFile.Empty();
-			}
-
 			std::string cacheFilename = UMiscUtils::generateRandomFileName(".wav");
 			wchar_t* pFilename = UMiscUtils::AtoW(cacheFilename.c_str());
 			mCacheFile = UMiscUtils::GetProgramDataPath(_T("MyFFmpeg"), pFilename); // 生成一个临时文件
 			delete[] pFilename;
 
 			CString strCmd;
-			strCmd.Format(_T(" -i %s -vn -ar %d -y %s"), (LPCTSTR)mSourceFile, mRequiredFormat->nSamplesPerSec, (LPCTSTR)mCacheFile); // 注意：-i之前须有一个空格
-			mbConverting = true;
+			strCmd.Format(_T(" -i %s -vn -ar %d -ac %d -y %s"), (LPCTSTR)mSourceFile, mRequiredFormat->nSamplesPerSec, mRequiredFormat->nChannels, (LPCTSTR)mCacheFile); // 注意：-i之前须有一个空格
 			mMpegHub.Run(strCmd);
+			this->GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(FALSE); // 转换完成前不允许播放
 			return;
 		}
 		else {
@@ -382,8 +376,12 @@ void CWinAudioPlayerDlg::OnTaskCompleted()
 	std::cout << "FFmpeg task done!" << std::endl;
 	if (!mCacheFile.IsEmpty()) {
 		parseWaveFile((LPCTSTR)mCacheFile);
+
+		DeleteFile(mCacheFile); // 清理缓存
+		mCacheFile.Empty();
 	}
-	mbConverting = false;
+
+	this->GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(TRUE);
 }
 
 /*
@@ -437,7 +435,6 @@ void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 	}
 	
 	UpdateData(TRUE);
-	if (mbUseFFmpeg && mbConverting) return;
 
 	PrepareForPlayback();
 	mAudioPlayer.Start();

@@ -31,7 +31,6 @@ protected:
 	BOOL mIsSynth;
 
 	BOOL mbUseFFmpeg;
-	bool mbConverting;
 	FFmpegTask mMpegHub;
 	CString mCacheFile;
 
