@@ -316,7 +316,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 {
 	UpdateData(TRUE);
 
-	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|All Files (*.*)|*.*||"), NULL);
+	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Wave Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|OGG Files (*.ogg)|*.ogg|All Files (*.*)|*.*||"), NULL);
 	if (fileDlg.DoModal() == IDOK)
 	{
 		mSourceFile = fileDlg.GetPathName();
@@ -329,6 +329,7 @@ void CWinAudioPlayerDlg::OnBnClickedButtonBrowser()
 			mCacheFile = UMiscUtils::GetProgramDataPath(_T("MyFFmpeg"), pFilename); // 生成一个临时文件
 			delete[] pFilename;
 
+			// [TBD] 是否指定audio codec: -acodec pcm_u8 / pcm_s16le / pcm_f32le ?
 			CString strCmd;
 			strCmd.Format(_T(" -i %s -vn -ar %d -ac %d -y %s"), (LPCTSTR)mSourceFile, mRequiredFormat->nSamplesPerSec, mRequiredFormat->nChannels, (LPCTSTR)mCacheFile); // 注意：-i之前须有一个空格
 			mMpegHub.Run(strCmd);
@@ -570,34 +571,41 @@ bool CWinAudioPlayerDlg::FillBufferWithFileData(UINT32 frameCount, BYTE* pData)
 	
 	float* out = (float*)pData;
 
+	int samplesAlreadyRead = 0;
+	float sampleValue = 0.0;
 	for (int frame = 0; frame < framesToRead; ++frame) {
-		float val = 0.0;
-		int sourceOffset = frame * header.numChannels;
 		for (int chan = 0; chan < mRequiredFormat->nChannels; ++chan) {
+			sampleValue = 0.0;
 			if (header.bitsPerSample == 8) {     // PCM数据标准化
-				int8_t* pReadPos = (int8_t*)pSourceData + sourceOffset;
+				int8_t* pReadPos = (int8_t*)pSourceData + samplesAlreadyRead;
 				if (chan < header.numChannels) { // 如果设备的声道数多于源文件，则填充静音数据
-					val = pReadPos[chan] * 1.0 / 0x7F;
+					sampleValue = pReadPos[chan] * 1.0 / 0xFF;
 				}
 			}
 			else if (header.bitsPerSample == 16) {
-				int16_t* pReadPos = (int16_t*)pSourceData + sourceOffset;
+				int16_t* pReadPos = (int16_t*)pSourceData + samplesAlreadyRead;
 				if (chan < header.numChannels) {
-					val = pReadPos[chan] * 1.0 / 0x7FFF;
+					sampleValue = pReadPos[chan] * 1.0 / 0x7FFF;
 				}
 			}
 			else if (header.bitsPerSample == 32) {
-				int32_t* pReadPos = (int32_t*)pSourceData + sourceOffset;
+				/*int32_t* pReadPos = (int32_t*)pSourceData + samplesAlreadyRead;
 				if (chan < header.numChannels) {
-					val = pReadPos[chan] * 1.0 / 0x7FFFFFFF;
+					sampleValue = pReadPos[chan] * 1.0 / 0x7FFFFFFF;
+				}*/
+				float* pReadPos = (float*)pSourceData + samplesAlreadyRead;
+				if (chan < header.numChannels) {
+					sampleValue = pReadPos[chan];
 				}
 			}
 			else {
 				std::cout << "Not supported! Bits_per_sample " << header.bitsPerSample << std::endl;
 			}
 
-			out[frame * mRequiredFormat->nChannels + chan] = val;
+			out[frame * mRequiredFormat->nChannels + chan] = sampleValue;
 		}
+
+		samplesAlreadyRead += header.numChannels;
 	}
 
 	return framesToRead > 0;
