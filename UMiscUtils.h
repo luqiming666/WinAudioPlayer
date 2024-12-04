@@ -2,7 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <list>
 
 namespace UMiscUtils {
 
@@ -17,7 +16,7 @@ namespace UMiscUtils {
 	uint64_t Resample_f32(const float* input, float* output, int inSampleRate, int outSampleRate, uint64_t inputSize, uint32_t channels);
 	uint64_t Resample_s16(const int16_t* input, int16_t* output, int inSampleRate, int outSampleRate, uint64_t inputSize, uint32_t channels);
 
-	std::list<std::wstring> GetAllSoundCards();
+	std::vector<std::wstring> GetAllSoundCards();
 	std::wstring GetDefaultSoundCard();
 
 	bool RunExternalApp(const TCHAR* appPath, TCHAR* appParams, bool bSync = false);

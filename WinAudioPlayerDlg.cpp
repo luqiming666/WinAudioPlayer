@@ -171,7 +171,7 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 	mAudioPlayer.Init(); // init with the default device
 
 	// 枚举所有音频播放设备
-	std::list<std::wstring> soundCards = UMiscUtils::GetAllSoundCards();
+	std::vector<std::wstring> soundCards = UMiscUtils::GetAllSoundCards();
 	for (std::wstring item : soundCards) {
 		mSoundCardList.AddString(item.c_str());
 	}

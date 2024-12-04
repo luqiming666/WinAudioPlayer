@@ -220,9 +220,9 @@ namespace UMiscUtils {
 		return outputSize;
 	}
 
-	std::list<std::wstring> GetAllSoundCards()
+	std::vector<std::wstring> GetAllSoundCards()
 	{
-		std::list<std::wstring> allCards;
+		std::vector<std::wstring> allCards;
 
 		IMMDeviceEnumerator* pEnumerator = NULL;
 		IMMDeviceCollection* pDevices = NULL;
