@@ -88,7 +88,7 @@ CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	, mIsSynth(FALSE)
 	, mbUseFFmpeg(FALSE)
 	, mCacheFile(_T(""))
-	, mbUseLegacyWaveOut(TRUE)
+	, mbUseLegacyWaveOut(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -581,7 +581,7 @@ bool CWinAudioPlayerDlg::FillBufferWithFileData(UINT32 frameCount, BYTE* pData)
 	int samplesAlreadyRead = 0;
 	float sampleValue = 0.0;
 	for (int frame = 0; frame < framesToRead; ++frame) {
-		for (int chan = 0; chan < mRequiredFormat->nChannels; ++chan) {
+		for (int chan = 0; chan < mRequiredFormat->nChannels; ++chan) { // 如果源文件的声道数多于设备的声道数，则超出的声道内容不播放
 			sampleValue = 0.0;
 			if (header.bitsPerSample == 8) {     // PCM数据标准化
 				int8_t* pReadPos = (int8_t*)pSourceData + samplesAlreadyRead;
@@ -988,75 +988,76 @@ BOOL PlayWaveFile(const wchar_t* filePath, UINT deviceId)
 
 // What formats does the sound playback device support?
 // https://learn.microsoft.com/zh-cn/previous-versions/dd743855(v=vs.85)
+// 结论：waveOut api只支持单声道和双声道。不支持多于2个声道数量！
 void PrintSupportedFormats(DWORD formats)
 {
 	// 11.025 kHz
-	if (formats & WAVE_FORMAT_1M08 != 0) {
+	if ((formats & WAVE_FORMAT_1M08) != 0) {
 		std::cout << "11.025 kHz, mono, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_1M16 != 0) {
+	if ((formats & WAVE_FORMAT_1M16) != 0) {
 		std::cout << "11.025 kHz, mono, 16-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_1S08 != 0) {
+	if ((formats & WAVE_FORMAT_1S08) != 0) {
 		std::cout << "11.025 kHz, stereo, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_1S16 != 0) {
+	if ((formats & WAVE_FORMAT_1S16) != 0) {
 		std::cout << "11.025 kHz, stereo, 16-bit" << std::endl;
 	}
 
 	// 22.05 kHz
-	if (formats & WAVE_FORMAT_2M08 != 0) {
+	if ((formats & WAVE_FORMAT_2M08) != 0) {
 		std::cout << "22.05 kHz, mono, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_2M16 != 0) {
+	if ((formats & WAVE_FORMAT_2M16) != 0) {
 		std::cout << "22.05 kHz, mono, 16-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_2S08 != 0) {
+	if ((formats & WAVE_FORMAT_2S08) != 0) {
 		std::cout << "22.05 kHz, stereo, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_2S16 != 0) {
+	if ((formats & WAVE_FORMAT_2S16) != 0) {
 		std::cout << "22.05 kHz, stereo, 16-bit" << std::endl;
 	}
 
 	// 44.1 kHz
-	if (formats & WAVE_FORMAT_4M08 != 0) {
+	if ((formats & WAVE_FORMAT_4M08) != 0) {
 		std::cout << "44.1 kHz, mono, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_4M16 != 0) {
+	if ((formats & WAVE_FORMAT_4M16) != 0) {
 		std::cout << "44.1 kHz, mono, 16-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_4S08 != 0) {
+	if ((formats & WAVE_FORMAT_4S08) != 0) {
 		std::cout << "44.1 kHz, stereo, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_4S16 != 0) {
+	if ((formats & WAVE_FORMAT_4S16) != 0) {
 		std::cout << "44.1 kHz, stereo, 16-bit" << std::endl;
 	}
 
 	// 48 kHz
-	if (formats & WAVE_FORMAT_48M08 != 0) {
+	if ((formats & WAVE_FORMAT_48M08) != 0) {
 		std::cout << "48 kHz, mono, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_48M16 != 0) {
+	if ((formats & WAVE_FORMAT_48M16) != 0) {
 		std::cout << "48 kHz, mono, 16-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_48S08 != 0) {
+	if ((formats & WAVE_FORMAT_48S08) != 0) {
 		std::cout << "48 kHz, stereo, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_48S16 != 0) {
+	if ((formats & WAVE_FORMAT_48S16) != 0) {
 		std::cout << "48 kHz, stereo, 16-bit" << std::endl;
 	}
 
 	// 96 kHz
-	if (formats & WAVE_FORMAT_96M08 != 0) {
+	if ((formats & WAVE_FORMAT_96M08) != 0) {
 		std::cout << "96 kHz, mono, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_96M16 != 0) {
+	if ((formats & WAVE_FORMAT_96M16) != 0) {
 		std::cout << "96 kHz, mono, 16-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_96S08 != 0) {
+	if ((formats & WAVE_FORMAT_96S08) != 0) {
 		std::cout << "96 kHz, stereo, 8-bit" << std::endl;
 	}
-	if (formats & WAVE_FORMAT_96S16 != 0) {
+	if ((formats & WAVE_FORMAT_96S16) != 0) {
 		std::cout << "96 kHz, stereo, 16-bit" << std::endl;
 	}
 }
@@ -1072,8 +1073,8 @@ void CWinAudioPlayerDlg::PlayFileWithWaveout()
 			// 注：设备名字最长只能显示 (32 - 1) 个字符，因此可能显示不全
 			std::wcout << L"设备ID: " << i << L", 设备名称: " << caps.szPname << std::endl;
 
-			//std::cout << "Supported Formats: " << std::endl;
-			//PrintSupportedFormats(caps.dwFormats);
+			std::cout << "Supported Formats: " << std::endl;
+			PrintSupportedFormats(caps.dwFormats);
 		}
 	}
 
