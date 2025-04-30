@@ -88,6 +88,7 @@ CWinAudioPlayerDlg::CWinAudioPlayerDlg(CWnd* pParent /*=nullptr*/)
 	, mIsSynth(FALSE)
 	, mbUseFFmpeg(FALSE)
 	, mCacheFile(_T(""))
+	, mbUseLegacyWaveOut(TRUE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -99,6 +100,7 @@ void CWinAudioPlayerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO_SOUND_CARDS, mSoundCardList);
 	DDX_Check(pDX, IDC_CHECK_SYNTH, mIsSynth);
 	DDX_Check(pDX, IDC_CHECK_USE_FFMPEG, mbUseFFmpeg);
+	DDX_Check(pDX, IDC_CHECK_USE_LEGACY_WAVEOUT, mbUseLegacyWaveOut);
 }
 
 BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
@@ -172,7 +174,7 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 
 	// 枚举所有音频播放设备
 	std::vector<std::wstring> soundCards = UMiscUtils::GetAllSoundCards();
-	for (std::wstring item : soundCards) {
+	for (std::wstring& item : soundCards) {
 		mSoundCardList.AddString(item.c_str());
 	}
 	mSoundCardList.SelectString(-1, UMiscUtils::GetDefaultSoundCard().c_str()); // Select the default device
@@ -431,13 +433,18 @@ void WriteWaveFileHeader(std::fstream& file, UINT32 sampleRate, UINT16 numChanne
 
 void CWinAudioPlayerDlg::OnBnClickedButtonPlay()
 {
+	UpdateData(TRUE);
+
+	if (mbUseLegacyWaveOut) {
+		PlayFileWithWaveout();
+		return;
+	}
+
 	if (mAudioPlayer.IsPlaying()) {
 		//AfxMessageBox(_T("The playback is still in progress..."));
 		mAudioPlayer.Resume();
 		return;
-	}
-	
-	UpdateData(TRUE);
+	}	
 
 	PrepareForPlayback();
 	mAudioPlayer.Start();
@@ -829,3 +836,256 @@ void CWinAudioPlayerDlg::DecodeMp3ToPcmBuffer()
 	if (info.buffer)
 		free(info.buffer);
 }
+
+
+/////////////////////////////////////////////////////////////////////////
+#pragma comment(lib, "winmm.lib")
+
+#include <mmsystem.h>
+
+// 检查设备是否支持指定的格式
+BOOL IsDeviceFormatSupported(HWAVEOUT hWaveOut, WAVEFORMATEX* pFormat) 
+{
+	WAVEFORMATEX* pDeviceFormat = new WAVEFORMATEX;
+	pDeviceFormat->wFormatTag = pFormat->wFormatTag;
+	pDeviceFormat->nChannels = pFormat->nChannels;
+	pDeviceFormat->nSamplesPerSec = pFormat->nSamplesPerSec;
+	pDeviceFormat->nAvgBytesPerSec = pFormat->nAvgBytesPerSec;
+	pDeviceFormat->nBlockAlign = pFormat->nBlockAlign;
+	pDeviceFormat->wBitsPerSample = pFormat->wBitsPerSample;
+	pDeviceFormat->cbSize = 0;
+
+/*	MMRESULT result = waveOutGetDevCaps(hWaveOut, pDeviceFormat, sizeof(WAVEFORMATEX));
+	if (result != MMSYSERR_NOERROR) {
+		delete pDeviceFormat;
+		return FALSE;
+	}*/
+
+	delete pDeviceFormat;
+	return TRUE;
+}
+
+// 播放WAVE文件
+BOOL PlayWaveFile(const wchar_t* filePath, UINT deviceId) 
+{
+	// 打开WAVE文件并读取文件头和格式信息
+/*	std::ifstream file(filePath, std::ios::binary);
+	if (!file) {
+		std::cerr << "无法打开WAVE文件" << std::endl;
+		return FALSE;
+	}
+
+	char chunkId[4];
+	file.read(chunkId, 4);
+	if (memcmp(chunkId, "RIFF", 4) != 0) {
+		std::cerr << "不是有效的RIFF文件" << std::endl;
+		file.close();
+		return FALSE;
+	}
+
+	DWORD chunkSize;
+	file.read(reinterpret_cast<char*>(&chunkSize), sizeof(DWORD));
+
+	file.read(chunkId, 4);
+	if (memcmp(chunkId, "WAVE", 4) != 0) {
+		std::cerr << "不是有效的WAVE文件" << std::endl;
+		file.close();
+		return FALSE;
+	}
+
+	file.read(chunkId, 4);
+	if (memcmp(chunkId, "fmt ", 4) != 0) {
+		std::cerr << "无法找到格式块" << std::endl;
+		file.close();
+		return FALSE;
+	}
+
+	DWORD fmtChunkSize;
+	file.read(reinterpret_cast<char*>(&fmtChunkSize), sizeof(DWORD));*/
+
+	//parseWaveFile(filePath);
+
+	WAVEFORMATEX format;
+	//file.read(reinterpret_cast<char*>(&format), fmtChunkSize);
+	format.wFormatTag = WAVE_FORMAT_PCM;
+	format.nChannels = header.numChannels;
+	format.nSamplesPerSec = header.sampleRate;
+	format.wBitsPerSample = header.bitsPerSample;
+	format.nBlockAlign = format.nChannels * (format.wBitsPerSample / 8);
+	format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+	format.cbSize = 0;
+
+	// 查找数据块
+	//while (file.good()) {
+	//	file.read(chunkId, 4);
+	//	if (memcmp(chunkId, "data", 4) == 0) {
+		//	DWORD dataChunkSize;
+			//file.read(reinterpret_cast<char*>(&dataChunkSize), sizeof(DWORD));
+
+			// 读取音频数据
+			//std::vector<char> audioData(dataChunkSize);
+			//file.read(audioData.data(), dataChunkSize);
+
+			// 打开指定的音频设备
+			HWAVEOUT hWaveOut;
+			MMRESULT result = waveOutOpen(&hWaveOut, deviceId, &format, 0, 0, CALLBACK_NULL);
+			if (result != MMSYSERR_NOERROR) {
+				std::cout << "Failed to open the audio device with error code: " << result << std::endl;
+				//file.close();
+				return FALSE;
+			}
+
+			// 检查设备是否支持指定格式
+			/*if (!IsDeviceFormatSupported(hWaveOut, &format)) {
+				std::cerr << "设备不支持指定的音频格式" << std::endl;
+				waveOutClose(hWaveOut);
+				file.close();
+				return FALSE;
+			}*/
+
+			// 创建WAVEHDR结构并填充音频数据
+			WAVEHDR waveHdr;
+			waveHdr.lpData = reinterpret_cast<char*>(pcmData.data());
+			waveHdr.dwBufferLength = pcmData.size();
+			waveHdr.dwFlags = 0;
+			waveHdr.dwLoops = 0;
+			waveHdr.lpNext = NULL;
+			waveHdr.reserved = 0;
+
+			// 准备音频数据块
+			result = waveOutPrepareHeader(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+			if (result != MMSYSERR_NOERROR) {
+				std::cerr << "无法准备音频数据块，错误码: " << result << std::endl;
+				waveOutClose(hWaveOut);
+				//file.close();
+				return FALSE;
+			}
+
+			// 播放音频数据
+			result = waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+			if (result != MMSYSERR_NOERROR) {
+				std::cerr << "无法播放音频数据，错误码: " << result << std::endl;
+				waveOutUnprepareHeader(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+				waveOutClose(hWaveOut);
+				//file.close();
+				return FALSE;
+			}
+
+			// 等待播放完成
+			while ((waveHdr.dwFlags & WHDR_DONE) == 0) {
+				Sleep(10);
+			}
+
+			// 释放音频数据块
+			waveOutUnprepareHeader(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+			waveOutClose(hWaveOut);
+	//	}
+//	}
+
+	//file.close();
+	return TRUE;
+}
+
+// What formats does the sound playback device support?
+// https://learn.microsoft.com/zh-cn/previous-versions/dd743855(v=vs.85)
+void PrintSupportedFormats(DWORD formats)
+{
+	// 11.025 kHz
+	if (formats & WAVE_FORMAT_1M08 != 0) {
+		std::cout << "11.025 kHz, mono, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_1M16 != 0) {
+		std::cout << "11.025 kHz, mono, 16-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_1S08 != 0) {
+		std::cout << "11.025 kHz, stereo, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_1S16 != 0) {
+		std::cout << "11.025 kHz, stereo, 16-bit" << std::endl;
+	}
+
+	// 22.05 kHz
+	if (formats & WAVE_FORMAT_2M08 != 0) {
+		std::cout << "22.05 kHz, mono, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_2M16 != 0) {
+		std::cout << "22.05 kHz, mono, 16-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_2S08 != 0) {
+		std::cout << "22.05 kHz, stereo, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_2S16 != 0) {
+		std::cout << "22.05 kHz, stereo, 16-bit" << std::endl;
+	}
+
+	// 44.1 kHz
+	if (formats & WAVE_FORMAT_4M08 != 0) {
+		std::cout << "44.1 kHz, mono, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_4M16 != 0) {
+		std::cout << "44.1 kHz, mono, 16-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_4S08 != 0) {
+		std::cout << "44.1 kHz, stereo, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_4S16 != 0) {
+		std::cout << "44.1 kHz, stereo, 16-bit" << std::endl;
+	}
+
+	// 48 kHz
+	if (formats & WAVE_FORMAT_48M08 != 0) {
+		std::cout << "48 kHz, mono, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_48M16 != 0) {
+		std::cout << "48 kHz, mono, 16-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_48S08 != 0) {
+		std::cout << "48 kHz, stereo, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_48S16 != 0) {
+		std::cout << "48 kHz, stereo, 16-bit" << std::endl;
+	}
+
+	// 96 kHz
+	if (formats & WAVE_FORMAT_96M08 != 0) {
+		std::cout << "96 kHz, mono, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_96M16 != 0) {
+		std::cout << "96 kHz, mono, 16-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_96S08 != 0) {
+		std::cout << "96 kHz, stereo, 8-bit" << std::endl;
+	}
+	if (formats & WAVE_FORMAT_96S16 != 0) {
+		std::cout << "96 kHz, stereo, 16-bit" << std::endl;
+	}
+}
+
+void CWinAudioPlayerDlg::PlayFileWithWaveout()
+{
+	std::wcout << L"使用 waveOut API 枚举音频设备..." << std::endl;
+
+	UINT deviceCount = waveOutGetNumDevs();
+	for (UINT i = 0; i < deviceCount; ++i) {
+		WAVEOUTCAPS caps;
+		if (waveOutGetDevCaps(i, &caps, sizeof(WAVEOUTCAPS)) == MMSYSERR_NOERROR) {
+			// 注：设备名字最长只能显示 (32 - 1) 个字符，因此可能显示不全
+			std::wcout << L"设备ID: " << i << L", 设备名称: " << caps.szPname << std::endl;
+
+			//std::cout << "Supported Formats: " << std::endl;
+			//PrintSupportedFormats(caps.dwFormats);
+		}
+	}
+
+	// 选择要使用的设备ID（这里选择第一个设备，你可以根据需要修改）
+	UINT selectedDeviceId = 0;
+
+	// 播放WAVE文件
+	if (PlayWaveFile((LPCTSTR)mSourceFile, selectedDeviceId)) {
+		std::cout << "WAVE player succeeded." << std::endl;
+	}
+	else {
+		std::cout << "WAVE player failure." << std::endl;
+	}
+}
+

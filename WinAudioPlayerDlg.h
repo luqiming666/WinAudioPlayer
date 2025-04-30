@@ -38,6 +38,9 @@ protected:
 	WAVEFORMATEX* mRequiredFormat;
 	CString mSourceFile;
 
+	BOOL mbUseLegacyWaveOut;
+	void PlayFileWithWaveout();
+
 	// FFmpeg - ITaskObserver
 	virtual void OnTaskCompleted();
 
