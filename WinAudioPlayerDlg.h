@@ -38,9 +38,6 @@ protected:
 	WAVEFORMATEX* mRequiredFormat;
 	CString mSourceFile;
 
-	BOOL mbUseLegacyWaveOut;
-	void PlayFileWithWaveout();
-
 	// FFmpeg - ITaskObserver
 	virtual void OnTaskCompleted();
 
@@ -71,4 +68,5 @@ public:
 	afx_msg void OnDestroy();
 	afx_msg void OnCbnSelchangeComboSoundCards();
 	afx_msg void OnBnClickedButtonPlayWithMiniaudio();
+	afx_msg void OnBnClickedButtonPlayWithLegacyWaveout();
 };

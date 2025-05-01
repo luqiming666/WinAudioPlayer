@@ -8,30 +8,22 @@
 class CEasyWavePlayer
 {
 private:
-    wchar_t             mSourceFile[MAX_PATH];
-    WAVEFORMATEX*       mpWaveFormat;
+    wchar_t mSourceFile[MAX_PATH];
+    UINT    mDeviceId;
 
     bool mIsPlaying;
-    bool mIsPaused;
-    bool mContinueReading;
-
-    void CheckDeviceProperties();
 
 public:
     CEasyWavePlayer();
 	~CEasyWavePlayer();
 
-    bool Init(const wchar_t* deviceName = NULL);
-    void Uninit();
-    void DoPlaybackLoop();
-
-    int Play(const wchar_t* sourceFile);
-    void Stop(bool bWaitToFinish = false);
-    void Pause() { mIsPaused = true; }
-    void Resume() { mIsPaused = false; }
+    int Play(const wchar_t* sourceFile, UINT deviceId);
     bool IsPlaying() { return mIsPlaying; }
 
-    bool GetWaveFormat(WAVEFORMATEX& format);
+    UINT GetDevCount();
+    void CheckDevCaps();
+
+    void DoPlaybackLoop();
 };
 
 #endif // __H_CEasyWavePlayer__

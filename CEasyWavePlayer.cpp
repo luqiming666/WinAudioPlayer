@@ -8,49 +8,117 @@
 #include "Defs.h"
 #include <mmsystem.h>
 
+#include <vector>
 #include <iostream>
+#include <fstream>
 #include <thread>
-#include <chrono>
-using namespace std::chrono;
 
-#include <locale>
+#pragma comment(lib, "winmm.lib")
 
 ////////////////////////////////////////////////////////////////////////////////
 CEasyWavePlayer::CEasyWavePlayer() 
-    : mpWaveFormat(nullptr)
-    , mIsPlaying(false)
-    , mIsPaused(false)
-    , mContinueReading(true)
+    : mIsPlaying(false)
+    , mDeviceId(0)
 {
 }
 
 CEasyWavePlayer::~CEasyWavePlayer()
 {
-    Uninit();
 }
 
-bool CEasyWavePlayer::Init(const wchar_t* deviceName/*=NULL*/)
+// What formats does the sound playback device support?
+// https://learn.microsoft.com/zh-cn/previous-versions/dd743855(v=vs.85)
+// 结论：waveOut api只支持单声道和双声道。不支持多于2个声道数量！
+void _PrintSupportedFormats(DWORD formats)
 {
-    // 枚举音频设备
+    // 11.025 kHz
+    if ((formats & WAVE_FORMAT_1M08) != 0) {
+        std::cout << "11.025 kHz, mono, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_1M16) != 0) {
+        std::cout << "11.025 kHz, mono, 16-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_1S08) != 0) {
+        std::cout << "11.025 kHz, stereo, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_1S16) != 0) {
+        std::cout << "11.025 kHz, stereo, 16-bit" << std::endl;
+    }
+
+    // 22.05 kHz
+    if ((formats & WAVE_FORMAT_2M08) != 0) {
+        std::cout << "22.05 kHz, mono, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_2M16) != 0) {
+        std::cout << "22.05 kHz, mono, 16-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_2S08) != 0) {
+        std::cout << "22.05 kHz, stereo, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_2S16) != 0) {
+        std::cout << "22.05 kHz, stereo, 16-bit" << std::endl;
+    }
+
+    // 44.1 kHz
+    if ((formats & WAVE_FORMAT_4M08) != 0) {
+        std::cout << "44.1 kHz, mono, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_4M16) != 0) {
+        std::cout << "44.1 kHz, mono, 16-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_4S08) != 0) {
+        std::cout << "44.1 kHz, stereo, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_4S16) != 0) {
+        std::cout << "44.1 kHz, stereo, 16-bit" << std::endl;
+    }
+
+    // 48 kHz
+    if ((formats & WAVE_FORMAT_48M08) != 0) {
+        std::cout << "48 kHz, mono, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_48M16) != 0) {
+        std::cout << "48 kHz, mono, 16-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_48S08) != 0) {
+        std::cout << "48 kHz, stereo, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_48S16) != 0) {
+        std::cout << "48 kHz, stereo, 16-bit" << std::endl;
+    }
+
+    // 96 kHz
+    if ((formats & WAVE_FORMAT_96M08) != 0) {
+        std::cout << "96 kHz, mono, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_96M16) != 0) {
+        std::cout << "96 kHz, mono, 16-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_96S08) != 0) {
+        std::cout << "96 kHz, stereo, 8-bit" << std::endl;
+    }
+    if ((formats & WAVE_FORMAT_96S16) != 0) {
+        std::cout << "96 kHz, stereo, 16-bit" << std::endl;
+    }
+}
+
+UINT CEasyWavePlayer::GetDevCount()
+{
+    return waveOutGetNumDevs();
+}
+
+void CEasyWavePlayer::CheckDevCaps()
+{
     UINT deviceCount = waveOutGetNumDevs();
     for (UINT i = 0; i < deviceCount; ++i) {
         WAVEOUTCAPS caps;
         if (waveOutGetDevCaps(i, &caps, sizeof(WAVEOUTCAPS)) == MMSYSERR_NOERROR) {
-            std::cout << "设备ID: " << i << ", 设备名称: " << caps.szPname << std::endl;
+            // 注：设备名字最长只能显示 (32 - 1) 个字符，因此可能显示不全
+            std::wcout << L"设备ID: " << i << L", 设备名称: " << caps.szPname << std::endl;
+
+            std::cout << "Supported Formats: " << std::endl;
+            _PrintSupportedFormats(caps.dwFormats);
         }
-    }
-
-Exit:
-    // 释放资源
-    Uninit();
-    return false;
-}
-
-void CEasyWavePlayer::Uninit()
-{
-    if (mpWaveFormat) {
-        CoTaskMemFree(mpWaveFormat);
-        mpWaveFormat = nullptr;
     }
 }
 
@@ -61,211 +129,138 @@ void _PlaybackProc(CEasyWavePlayer* playerInstance)
     }
 }
 
-// Error codes:
-//  0, succeeded
-//  -1, playback in progress
-//  -2, source file format is not supported 
-int CEasyWavePlayer::Play(const wchar_t* sourceFile)
+int CEasyWavePlayer::Play(const wchar_t* sourceFile, UINT deviceId)
 {
-    if (mIsPlaying) return -1;
+    if (mIsPlaying) return false;
 
-        // 启动一个播放线程
-        std::thread myThread(_PlaybackProc, this);
-        myThread.detach();
+    wcsncpy_s(mSourceFile, MAX_PATH, sourceFile, _TRUNCATE);
+    mDeviceId = deviceId;
 
-        return true;
-    }
-    return false;
+    // 启动一个播放线程
+    std::thread myThread(_PlaybackProc, this);
+    myThread.detach();
+
+    return true;
 }
 
-void CEasyWavePlayer::Stop(bool bWaitToFinish)
+int _ParseWaveFile(const wchar_t* srcFile, WavHeader& header, std::vector<int8_t>& pcmData)
 {
-    if (!mIsPlaying) return;
-
-    mContinueReading = false; // Notify the internal thread to terminate
-    if (mpAudioClient) {
-        mpAudioClient->Stop();
-        mpAudioClient->Reset();
+    // Codes from ChatGPT 3.5 *_^
+    // 打开.wav文件
+    std::ifstream file(srcFile, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "Failed to open file." << std::endl;
+        return 1;
     }
 
-    if (bWaitToFinish) {
-        while (mIsPlaying) Sleep(10);
+    std::wcout << L"Parsing the wave file: " << srcFile << std::endl;
+
+    // 获取文件大小
+    file.seekg(0, std::ios::end);
+    int fileSize = (int)file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // 读取文件头
+    //WavHeader header;
+    file.read(reinterpret_cast<char*>(&header), sizeof(WavHeader));
+
+    // 检查文件头是否有效
+    if (std::string(header.chunkId, 4) != "RIFF" || std::string(header.format, 4) != "WAVE") {
+        std::cout << "Invalid WAV file format." << std::endl;
+        return 1;
     }
+
+    // 读取PCM数据
+    // 注意：header.subchunk2Size不可靠！
+    //std::vector<int8_t> pcmData(header.subchunk2Size);
+    int bytesToRead = fileSize - sizeof(WavHeader);
+    pcmData = std::vector<int8_t>(bytesToRead);
+    file.read(reinterpret_cast<char*>(pcmData.data()), bytesToRead);
+
+    // 输出文件信息
+    std::cout << "Channels: " << header.numChannels << std::endl;
+    std::cout << "Sample Rate: " << header.sampleRate << " Hz" << std::endl;
+    std::cout << "Bits per Sample: " << header.bitsPerSample << std::endl;
+    std::cout << "PCM Data Size: " << pcmData.size() << " bytes" << std::endl;
+
+    // 关闭文件
+    file.close();
+
+    return 0;
 }
 
 void CEasyWavePlayer::DoPlaybackLoop()
 {
-    HRESULT hr;
-    BYTE* pData = NULL;
-    DWORD flags = 0;
-    REFERENCE_TIME hnsActualDuration;
-    DWORD halfDuration;
-    UINT32 numFramesAvailable, numFramesPadding;
-
-    // See how much buffer space is available.
-    hr = mpAudioClient->GetCurrentPadding(&numFramesPadding);
-    EXIT_ON_ERROR(hr);
-
-    numFramesAvailable = mBufFrameCount - numFramesPadding;
-    if (numFramesAvailable > 0) {
-        // Grab the entire buffer for the initial fill operation.
-        hr = mpRenderClient->GetBuffer(numFramesAvailable, &pData);
-        EXIT_ON_ERROR(hr);
-
-        // Load the initial data into the shared buffer.
-        hr = mDataSource->LoadData(numFramesAvailable, pData, &flags);
-        EXIT_ON_ERROR(hr);
-
-        hr = mpRenderClient->ReleaseBuffer(numFramesAvailable, flags);
-        EXIT_ON_ERROR(hr);
-    }
-
-    // Calculate the actual duration of the allocated buffer.
-    double ratio = 1.0 * mBufFrameCount / mpWaveFormat->nSamplesPerSec;
-    hnsActualDuration = REFTIMES_PER_SEC * ratio;
-
-    hr = mpAudioClient->Start();  // Start playing
-    EXIT_ON_ERROR(hr);
     std::cout << ">>> Playback loop started" << std::endl;
+    mIsPlaying = true; // 标识播放正式开始
+    HWAVEOUT hWaveOut = NULL;
 
-    mIsPlaying = true;
-
-    halfDuration = (DWORD)(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
-    // Each loop fills about half of the shared buffer.
-    while (mContinueReading && flags != AUDCLNT_BUFFERFLAGS_SILENT)
-    {
-        if (mIsPaused) {
-            Sleep(10);
-            std::cout << "playback loop - paused for 10ms..." << std::endl;
-            continue;
-        }
-
-        // Sleep for half the buffer duration.
-        Sleep(halfDuration);
-        std::cout << "playback loop - sleep " << halfDuration << std::endl;
-
-        // See how much buffer space is available.
-        hr = mpAudioClient->GetCurrentPadding(&numFramesPadding);
-        EXIT_ON_ERROR(hr);
-        numFramesAvailable = mBufFrameCount - numFramesPadding;
-        std::cout << "be ready to read " << numFramesAvailable << std::endl;
-
-        if (numFramesAvailable > 0) {
-            // Grab all the available space in the shared buffer.
-            hr = mpRenderClient->GetBuffer(numFramesAvailable, &pData);
-            // Get next 1/2-second of data from the audio source.
-            hr = mDataSource->LoadData(numFramesAvailable, pData, &flags);
-            hr = mpRenderClient->ReleaseBuffer(numFramesAvailable, flags);
-            EXIT_ON_ERROR(hr);
-        }
+    WavHeader header;
+    std::vector<int8_t> pcmData;
+    if (_ParseWaveFile(mSourceFile, header, pcmData) != 0) {
+        std::cout << "Failed to open the source file." << std::endl;
+        goto Exit;
     }
 
-    // Wait for last data in buffer to play before stopping.
-    if (mContinueReading) {
-        Sleep(halfDuration);
+    WAVEFORMATEX format;
+    format.wFormatTag = WAVE_FORMAT_PCM;
+    format.nChannels = header.numChannels;
+    format.nSamplesPerSec = header.sampleRate;
+    format.wBitsPerSample = header.bitsPerSample;
+    format.nBlockAlign = format.nChannels * (format.wBitsPerSample / 8);
+    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+    format.cbSize = 0;
+
+    // 打开指定的音频设备
+    MMRESULT result = waveOutOpen(&hWaveOut, mDeviceId, &format, 0, 0, CALLBACK_NULL);
+    if (result != MMSYSERR_NOERROR) {
+        std::cout << "Failed to open the audio device. Error: " << result << std::endl;
+        goto Exit;
+    }
+
+    // 检查设备是否支持指定格式
+    /*if (!IsDeviceFormatSupported(hWaveOut, &format)) {
+        std::cerr << "设备不支持指定的音频格式" << std::endl;
+        waveOutClose(hWaveOut);
+        file.close();
+        return FALSE;
+    }*/
+
+    // 创建WAVEHDR结构并填充音频数据
+    WAVEHDR waveHdr;
+    waveHdr.lpData = reinterpret_cast<char*>(pcmData.data());
+    waveHdr.dwBufferLength = pcmData.size();
+    waveHdr.dwFlags = 0;
+    waveHdr.dwLoops = 0;
+    waveHdr.lpNext = NULL;
+    waveHdr.reserved = 0;
+
+    // 准备音频数据块
+    result = waveOutPrepareHeader(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+    if (result != MMSYSERR_NOERROR) {
+        std::cout << "Failed to prepare audio data. Error: " << result << std::endl;
+        goto Exit;
+    }
+
+    // 播放音频数据
+    result = waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+    if (result != MMSYSERR_NOERROR) {
+        std::cout << "Failed to write audio data. Error: " << result << std::endl;
+        goto Exit;
+    }
+
+    // 等待播放完成
+    while ((waveHdr.dwFlags & WHDR_DONE) == 0) {
+        Sleep(10);
     }
 
 Exit:
+    // 释放音频数据块
+    if (hWaveOut) {
+        waveOutUnprepareHeader(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+        waveOutClose(hWaveOut);
+    }    
+
     mIsPlaying = false;
-    if (mpAudioClient) {
-        mpAudioClient->Stop();
-        mpAudioClient->Reset();
-    }
     std::cout << ">>> Playback loop exited" << std::endl;
-}
-
-bool CEasyWavePlayer::GetWaveFormat(WAVEFORMATEX& format)
-{
-    if (mpWaveFormat != nullptr) {
-        format = *mpWaveFormat;
-        return true;
-    }
-    return false;
-}
-
-void CEasyWavePlayer::SetAudioSource(IAudioSource* pSource)
-{
-    mDataSource = pSource;
-}
-
-void CEasyWavePlayer::CheckDeviceProperties()
-{
-    HRESULT hr = S_OK;
-    IPropertyStore* pProps = NULL;
-    LPWSTR pwszID = NULL;
-
-    // Get the endpoint ID string.
-    hr = mpDevice->GetId(&pwszID);
-    EXIT_ON_ERROR(hr);
-    std::wcout << L"Device ID: " << pwszID << std::endl;
-
-    hr = mpDevice->OpenPropertyStore(STGM_READ, &pProps);
-    EXIT_ON_ERROR(hr);
-
-    PROPVARIANT varName;
-    PropVariantInit(&varName);
-
-    // Get the endpoint's friendly-name property.
-    hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
-    // GetValue succeeds and returns S_OK if PKEY_Device_FriendlyName is not found.
-    // In this case vartName.vt is set to VT_EMPTY.      
-    if (varName.vt != VT_EMPTY)
-    {
-        std::wcout << L"Device FriendlyName: " << varName.pwszVal << std::endl;
-    }
-    PropVariantClear(&varName);
-
-    PropVariantInit(&varName);
-    hr = pProps->GetValue(PKEY_Device_DeviceDesc, &varName);
-    if (varName.vt != VT_EMPTY)
-    {
-        std::wcout << L"Device description: " << varName.pwszVal << std::endl;
-    }
-    PropVariantClear(&varName);
-
-Exit:
-    if (pwszID != NULL) {
-        CoTaskMemFree(pwszID);
-        pwszID = NULL;
-    }
-    SAFE_RELEASE(pProps);
-    
-    return;
-}
-
-HRESULT CEasyWavePlayer::FindAudioDevice(IMMDeviceEnumerator* pEnumerator, IMMDevice** ppDevice, const wchar_t* deviceName)
-{
-    IMMDeviceCollection* pDevices = NULL;
-    HRESULT hr = pEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &pDevices);
-
-    UINT deviceCount = 0;
-    bool bFound = false;
-    hr = pDevices->GetCount(&deviceCount);
-    if (deviceCount > 0) {
-        for (int i = 0; i < deviceCount && !bFound; i++) {
-            IMMDevice* pDeviceItem = NULL;
-            IPropertyStore* pProps = NULL;
-            if (SUCCEEDED(pDevices->Item(i, &pDeviceItem))) {
-                hr = pDeviceItem->OpenPropertyStore(STGM_READ, &pProps);
-
-                PROPVARIANT varName;
-                PropVariantInit(&varName);
-                hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName);
-                if (varName.vt != VT_EMPTY)
-                {
-                    std::wstring strItemName = varName.pwszVal;
-                    if (strItemName.compare(deviceName) == 0) {
-                        pDeviceItem->AddRef();
-                        *ppDevice = pDeviceItem;
-                        bFound = true;
-                    }
-                }
-                PropVariantClear(&varName);
-            }
-            SAFE_RELEASE(pProps);
-            SAFE_RELEASE(pDeviceItem);
-        }
-    }
-
-    return bFound ? S_OK : E_FAIL;
 }

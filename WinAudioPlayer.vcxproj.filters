@@ -54,11 +54,11 @@
     <ClInclude Include="Defs.h">
       <Filter>源文件</Filter>
     </ClInclude>
+    <ClInclude Include="CEasyWavePlayer.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="WinAudioPlayerDlg.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -72,6 +72,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="WinAudioPlayer.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="CEasyWavePlayer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WinAudioPlayerDlg.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
   </ItemGroup>

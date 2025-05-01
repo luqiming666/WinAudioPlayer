@@ -16,8 +16,7 @@
 #define IDC_CHECK_SYNTH                 1006
 #define IDC_CHECK_USE_FFMPEG            1007
 #define IDC_BUTTON_PAUSE                1008
-#define IDC_CHECK_USE_FFMPEG2           1009
-#define IDC_CHECK_USE_LEGACY_WAVEOUT    1009
+#define IDC_BUTTON_PLAY_WITH_LEGACY_WAVEOUT 1010
 
 // Next default values for new objects
 // 
