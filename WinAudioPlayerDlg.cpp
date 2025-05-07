@@ -29,6 +29,7 @@ ma_device maDevice;
 #define MINIMP3_IMPLEMENTATION
 #include "minimp3_ex.h"
 
+#define WM_AUDIO_DEVICE_CHANGED    (WM_USER+100)
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -111,6 +112,7 @@ BEGIN_MESSAGE_MAP(CWinAudioPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CWinAudioPlayerDlg::OnBnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CWinAudioPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_DESTROY()
+	ON_MESSAGE(WM_AUDIO_DEVICE_CHANGED, OnAudioDeviceChangedMessage)
 	ON_CBN_SELCHANGE(IDC_COMBO_SOUND_CARDS, &CWinAudioPlayerDlg::OnCbnSelchangeComboSoundCards)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY_WITH_MINIAUDIO, &CWinAudioPlayerDlg::OnBnClickedButtonPlayWithMiniaudio)
 	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CWinAudioPlayerDlg::OnBnClickedButtonPause)
@@ -171,14 +173,15 @@ BOOL CWinAudioPlayerDlg::OnInitDialog()
 	// 初始化COM组件
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 	mAudioPlayer.SetAudioSource(this);
+	mAudioPlayer.SetDeviceListener(this);
 	mAudioPlayer.Init(); // init with the default device
 
 	// 枚举所有音频播放设备
-	std::vector<std::wstring> soundCards = UMiscUtils::GetAllSoundCards();
+	std::vector<std::wstring> soundCards = UMiscUtils::GetAllSoundDevices();
 	for (std::wstring& item : soundCards) {
 		mSoundCardList.AddString(item.c_str());
 	}
-	mSoundCardList.SelectString(-1, UMiscUtils::GetDefaultSoundCard().c_str()); // Select the default device
+	mSoundCardList.SelectString(-1, UMiscUtils::GetDefaultSoundDevice().c_str()); // Select the default device
 
 	TryToPlayFromCommandline();
 
@@ -642,6 +645,29 @@ HRESULT CWinAudioPlayerDlg::LoadData(UINT32 frameCount, BYTE* pData, DWORD* flag
 #endif
 
 	return S_OK;
+}
+
+HRESULT CWinAudioPlayerDlg::OnAudioDeviceChanged(LPCWSTR pwstrDeviceId)
+{
+	// 最好在UI线程里更新UI，所以使用一个自定义消息
+	PostMessage(WM_AUDIO_DEVICE_CHANGED);
+	return S_OK;
+}
+
+LRESULT CWinAudioPlayerDlg::OnAudioDeviceChangedMessage(WPARAM wParam, LPARAM lParam)
+{
+	mSoundCardList.ResetContent();
+
+	// 枚举所有音频播放设备
+	std::vector<std::wstring> soundCards = UMiscUtils::GetAllSoundDevices();
+	for (std::wstring& item : soundCards) {
+		mSoundCardList.AddString(item.c_str());
+	}
+	mSoundCardList.SelectString(-1, UMiscUtils::GetDefaultSoundDevice().c_str()); // Select the default device
+
+	OnCbnSelchangeComboSoundCards(); // 播放器重新初始化
+
+	return 0;
 }
 
 // 关联.wav扩展名到本程序：

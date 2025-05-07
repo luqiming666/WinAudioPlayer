@@ -184,6 +184,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CAudioBufPlayer.h" />
+    <ClInclude Include="CAudioDeviceListener.h" />
     <ClInclude Include="CEasyWavePlayer.h" />
     <ClInclude Include="Defs.h" />
     <ClInclude Include="FFmpegTask.h" />

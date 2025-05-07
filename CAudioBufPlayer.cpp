@@ -45,6 +45,8 @@ bool CAudioBufPlayer::Init(const wchar_t* deviceName/*=NULL*/)
     hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&mpEnumerator);
     EXIT_ON_ERROR(hr);
 
+    mpEnumerator->RegisterEndpointNotificationCallback(&mDeviceListener); // 监听设备状态变化
+
     // 获取音频输出设备
     if (deviceName) {
         hr = FindAudioDevice(mpEnumerator, &mpDevice, deviceName);
@@ -111,6 +113,9 @@ void CAudioBufPlayer::Uninit()
     if (mpWaveFormat) {
         CoTaskMemFree(mpWaveFormat);
         mpWaveFormat = nullptr;
+    }
+    if (mpEnumerator) {
+        mpEnumerator->UnregisterEndpointNotificationCallback(&mDeviceListener);
     }
     SAFE_RELEASE(mpRenderClient);
     SAFE_RELEASE(mpAudioClient);
@@ -249,6 +254,11 @@ bool CAudioBufPlayer::GetWaveFormat(WAVEFORMATEX& format)
 void CAudioBufPlayer::SetAudioSource(IAudioSource* pSource)
 {
     mDataSource = pSource;
+}
+
+void CAudioBufPlayer::SetDeviceListener(IAudioDeviceListener* pListener)
+{
+    mDeviceListener.SetDeviceListener(pListener);
 }
 
 void CAudioBufPlayer::CheckDeviceProperties()

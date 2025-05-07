@@ -28,7 +28,7 @@ CEasyWavePlayer::~CEasyWavePlayer()
 
 // What formats does the sound playback device support?
 // https://learn.microsoft.com/zh-cn/previous-versions/dd743855(v=vs.85)
-// 结论：waveOut api只支持单声道和双声道。不支持多于2个声道数量！
+// 结论：waveOut api支持的格式挺多的，不过声道数量只支持1个或2个，再多就不行了哦！
 void _PrintSupportedFormats(DWORD formats)
 {
     // 11.025 kHz

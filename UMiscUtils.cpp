@@ -220,7 +220,8 @@ namespace UMiscUtils {
 		return outputSize;
 	}
 
-	std::vector<std::wstring> GetAllSoundCards()
+	// 须确保在调用线程中已经 CoInitializeEx
+	std::vector<std::wstring> GetAllSoundDevices()
 	{
 		std::vector<std::wstring> allCards;
 
@@ -263,7 +264,8 @@ namespace UMiscUtils {
 		return allCards;
 	}
 
-	std::wstring GetDefaultSoundCard()
+	// 须确保在调用线程中已经 CoInitializeEx
+	std::wstring GetDefaultSoundDevice()
 	{
 		IMMDeviceEnumerator* pEnumerator = NULL;
 		IMMDevice* pDevice = NULL;

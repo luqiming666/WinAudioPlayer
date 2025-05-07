@@ -8,7 +8,7 @@
 #include "FFmpegTask.h"
 
 // CWinAudioPlayerDlg 对话框
-class CWinAudioPlayerDlg : public CDialogEx, public IAudioSource,public ITaskObserver
+class CWinAudioPlayerDlg : public CDialogEx, public IAudioSource, public ITaskObserver, public IAudioDeviceListener
 {
 // 构造
 public:
@@ -45,6 +45,9 @@ protected:
 	HRESULT SetFormat(WAVEFORMATEX* pFormat);
 	HRESULT LoadData(UINT32 frameCount, BYTE* pData, DWORD* flags);
 
+	// IAudioDeviceListener methods
+	HRESULT OnAudioDeviceChanged(LPCWSTR pwstrDeviceId);
+
 	void PrepareForPlayback();
 	bool FillBufferWithFileData(UINT32 frameCount, BYTE* pData);
 	void TryToPlayFromCommandline();
@@ -69,4 +72,5 @@ public:
 	afx_msg void OnCbnSelchangeComboSoundCards();
 	afx_msg void OnBnClickedButtonPlayWithMiniaudio();
 	afx_msg void OnBnClickedButtonPlayWithLegacyWaveout();
+	LRESULT OnAudioDeviceChangedMessage(WPARAM wParam, LPARAM lParam);
 };
